@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Diagnóstico Protagonista · Via Permuta</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Nunito:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#B08D4F;--gold-light:#D9BD82;--gold-soft:#E7D6AC;--gold-deep:#7A5E30;
+  --ink:#0E0A08;--cream:#F7F0E4;--night:#170D0E;--night-2:#201315;--white:#FFFFFF;
+  --card:#241417;--card-2:#2B181B;--border:rgba(247,240,228,.10);--border-2:rgba(247,240,228,.06);
+  --txt:#EFE6D8;--txt-dim:rgba(239,230,216,.72);--txt-faint:rgba(239,230,216,.54);
+  --green:#3FBF7F;--red:#E4685B;
+  --mono:'JetBrains Mono',monospace;--serif:'Fraunces',Georgia,serif;--sans:'Nunito',system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--night);color:var(--txt);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh;min-height:100dvh}
+
+/* fundo com grid + glow dourado, identidade Via Permuta */
+.grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(var(--border-2) 1px,transparent 1px),linear-gradient(90deg,var(--border-2) 1px,transparent 1px);
+  background-size:64px 64px;opacity:.5;mask-image:radial-gradient(ellipse 70% 55% at 50% 20%,#000 30%,transparent 80%)}
+.glow{position:fixed;top:-160px;left:50%;transform:translateX(-50%);width:820px;height:620px;border-radius:50%;
+  background:radial-gradient(circle,rgba(176,141,79,.24),transparent 62%);filter:blur(60px);z-index:0;pointer-events:none}
+
+/* topo fixo: logo + barra de progresso */
+.top-bar{position:sticky;top:0;z-index:20;background:rgba(23,13,14,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--border-2)}
+.top-inner{max-width:640px;margin:0 auto;padding:16px 24px 14px;display:flex;flex-direction:column;gap:12px}
+.top-row{display:flex;align-items:center;justify-content:space-between}
+.brand-mini{display:flex;align-items:center;gap:9px;text-decoration:none}
+.brand-mini svg,.brand-mini img{height:24px;width:24px;flex-shrink:0;object-fit:contain;filter:drop-shadow(0 0 5px rgba(243,148,27,.6)) drop-shadow(0 0 2px rgba(243,148,27,.5))}
+.brand-mini span{font-family:var(--serif);font-weight:600;font-size:15.5px;color:var(--cream);letter-spacing:.01em}
+.back-btn{background:var(--card);border:1.5px solid var(--border-2);color:var(--txt);font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;padding:9px 16px 9px 12px;border-radius:30px;transition:border-color .15s,background .15s,transform .15s;visibility:hidden;opacity:0}
+.back-btn.show{visibility:visible;opacity:1}
+.back-btn:hover{border-color:rgba(176,141,79,.5);background:var(--card-2)}
+.back-btn:active{transform:scale(.96)}
+.back-btn svg{flex-shrink:0}
+.progress-track{height:4px;border-radius:99px;background:var(--border);overflow:hidden}
+.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold-deep),var(--gold));width:0%;transition:width .5s cubic-bezier(.4,0,.2,1)}
+
+/* palco central */
+main{position:relative;z-index:1;max-width:640px;margin:0 auto;padding:56px 24px 80px;min-height:calc(100vh - 78px);min-height:calc(100dvh - 78px);display:flex;flex-direction:column;justify-content:center}
+
+.step{display:none}
+.step.active{display:block;animation:stepIn .5s cubic-bezier(.16,1,.3,1) both}
+@keyframes stepIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes stepOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-14px)}}
+.step.leaving{animation:stepOut .28s ease both}
+
+.q-eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-light);margin-bottom:14px;display:block}
+.q-title{font-family:var(--serif);font-weight:500;font-size:clamp(24px,4.4vw,34px);line-height:1.22;letter-spacing:-.015em;color:var(--cream);margin-bottom:8px}
+.q-sub{font-size:14.5px;color:var(--txt-dim);margin-bottom:30px;line-height:1.6}
+
+/* opções de escolha (single-select) */
+.opt-list{display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
+.opt{background:var(--card);border:1.5px solid var(--border-2);border-radius:14px;padding:17px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .18s,background .18s,transform .12s;text-align:left;font-family:var(--sans);color:var(--txt);font-size:15px;font-weight:600}
+.opt:hover{border-color:rgba(176,141,79,.5);background:var(--card-2)}
+.opt:active{transform:scale(.985)}
+.opt.checked{border-color:var(--gold);background:linear-gradient(135deg,rgba(176,141,79,.18),var(--card-2))}
+.opt-box{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:border-color .18s,background .18s}
+.opt.checked .opt-box{border-color:var(--gold);background:var(--gold)}
+.opt-box svg{width:13px;height:13px;stroke:var(--ink);stroke-width:3;fill:none;opacity:0;transform:scale(.5);transition:opacity .15s,transform .15s}
+.opt.checked .opt-box svg{opacity:1;transform:scale(1)}
+.opt-txt{flex:1}
+
+/* inputs de texto */
+.field-wrap{margin-bottom:10px}
+.q-input{width:100%;background:var(--card);border:1.5px solid var(--border-2);border-radius:14px;padding:18px 20px;font-family:var(--sans);font-size:17px;font-weight:600;color:var(--cream);outline:none;transition:border-color .18s,background .18s}
+.q-input::placeholder{color:var(--txt-faint);font-weight:500}
+.q-input:focus{border-color:var(--gold);background:var(--card-2)}
+.field-err{color:var(--red);font-size:12.5px;font-weight:700;margin-top:9px;display:none;align-items:center;gap:6px}
+.field-err.show{display:flex}
+
+.next-btn{margin-top:26px;width:100%;background:var(--gold);color:var(--ink);font-family:var(--sans);font-weight:800;font-size:15.5px;padding:17px 24px;border:none;border-radius:34px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:9px;transition:background .18s,transform .15s,box-shadow .18s;letter-spacing:.01em}
+.next-btn:hover{background:var(--gold-light);transform:translateY(-2px);box-shadow:0 14px 34px rgba(176,141,79,.35)}
+.next-btn:active{transform:translateY(0)}
+.next-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.next-hint{text-align:center;font-family:var(--mono);font-size:11px;color:var(--txt-faint);margin-top:14px;letter-spacing:.04em}
+
+/* dropdown de segmento (pesquisável) */
+.seg-select{position:relative}
+.seg-trigger{width:100%;background:var(--card);border:1.5px solid var(--border-2);border-radius:14px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color .18s}
+.seg-trigger.open,.seg-trigger:hover{border-color:rgba(176,141,79,.5)}
+.seg-trigger span{font-size:16px;font-weight:600;color:var(--txt-faint)}
+.seg-trigger.filled span{color:var(--cream)}
+.seg-trigger svg{width:16px;height:16px;stroke:var(--txt-faint);stroke-width:2;fill:none;transition:transform .2s}
+.seg-trigger.open svg{transform:rotate(180deg)}
+.seg-panel{position:absolute;left:0;right:0;top:calc(100% + 8px);background:var(--card-2);border:1.5px solid var(--border);border-radius:14px;padding:8px;max-height:280px;overflow-y:auto;z-index:5;box-shadow:0 20px 50px rgba(0,0,0,.5);display:none}
+.seg-panel.open{display:block;animation:panelIn .18s ease both}
+@keyframes panelIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.seg-search{width:100%;background:var(--night-2);border:1px solid var(--border-2);border-radius:9px;padding:11px 13px;font-family:var(--sans);font-size:14px;color:var(--cream);outline:none;margin-bottom:6px}
+.seg-search::placeholder{color:var(--txt-faint)}
+.seg-opt{padding:11px 13px;border-radius:9px;font-size:14.5px;font-weight:600;color:var(--txt);cursor:pointer;transition:background .12s}
+.seg-opt:hover,.seg-opt.hi{background:rgba(176,141,79,.18)}
+.seg-empty{padding:12px 13px;font-size:13px;color:var(--txt-faint)}
+
+/* dados de contato (etapa final) */
+.contact-field{position:relative;margin-bottom:12px}
+.contact-field svg{position:absolute;left:18px;top:50%;transform:translateY(-50%);width:18px;height:18px;stroke:var(--txt-faint);stroke-width:2;fill:none;pointer-events:none}
+.contact-field input{padding-left:50px}
+
+/* tela de sucesso */
+.success-wrap{text-align:center}
+.success-ico{width:74px;height:74px;border-radius:50%;background:rgba(63,191,127,.14);border:1.5px solid rgba(63,191,127,.35);margin:0 auto 26px;display:flex;align-items:center;justify-content:center;animation:pop .5s cubic-bezier(.16,1,.3,1) both}
+@keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+.success-ico svg{width:34px;height:34px;stroke:var(--green);stroke-width:2.5;fill:none}
+.success-wrap h1{font-family:var(--serif);font-weight:500;font-size:clamp(26px,4.6vw,36px);color:var(--cream);margin-bottom:14px;line-height:1.2}
+.success-wrap>p{font-size:15px;color:var(--txt-dim);max-width:440px;margin:0 auto 30px;line-height:1.65}
+.urgent-box{background:linear-gradient(135deg,rgba(176,141,79,.16),var(--card-2));border:1px solid rgba(176,141,79,.32);border-radius:18px;padding:22px;margin-bottom:30px}
+.urgent-box .u-lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-light);margin-bottom:10px;font-weight:700}
+.wpp-btn{background:var(--green);color:var(--white);font-weight:800;font-size:15px;padding:15px 26px;border-radius:30px;text-decoration:none;display:inline-flex;align-items:center;gap:9px;transition:transform .15s,box-shadow .15s;margin-top:6px}
+.wpp-btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(63,191,127,.3)}
+.wpp-note{font-size:11.5px;color:var(--txt-faint);margin-top:9px}
+
+.deliv-box{text-align:left;background:var(--card);border:1px solid var(--border-2);border-radius:18px;padding:26px 28px;margin-bottom:22px}
+.deliv-box h3{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-faint);margin-bottom:16px}
+.deliv-item{display:flex;align-items:flex-start;gap:11px;margin-bottom:13px;font-size:14px;color:var(--txt);line-height:1.5}
+.deliv-item:last-child{margin-bottom:0}
+.deliv-item svg{width:16px;height:16px;stroke:var(--gold-light);stroke-width:2.5;fill:none;flex-shrink:0;margin-top:2px}
+.deliv-item strong{color:var(--cream)}
+.deliv-value{border-top:1px solid var(--border-2);margin-top:16px;padding-top:16px;text-align:center}
+.deliv-old{font-family:var(--mono);font-size:13px;color:var(--txt-faint);margin-bottom:4px}
+.deliv-new{font-family:var(--serif);font-size:19px;color:var(--gold-light);font-weight:500}
+
+.next-steps{text-align:left;margin-bottom:8px}
+.next-steps h3{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-faint);margin-bottom:16px;text-align:center}
+.ns-item{display:flex;gap:14px;margin-bottom:16px}
+.ns-num{width:26px;height:26px;border-radius:50%;background:rgba(176,141,79,.18);border:1px solid rgba(176,141,79,.32);color:var(--gold-light);font-family:var(--mono);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ns-item p{font-size:13.5px;color:var(--txt-dim);line-height:1.55;padding-top:3px}
+
+.foot-note{text-align:center;font-size:12.5px;color:var(--txt-faint);margin-top:30px;line-height:1.6}
+.foot-note b{color:var(--txt-dim)}
+.mantra{text-align:center;font-family:var(--serif);font-style:italic;font-size:13.5px;color:var(--gold-soft);margin-top:10px}
+
+@media(max-width:520px){
+  main{padding:40px 18px 60px}
+  .opt{padding:15px 17px}
+  .q-input{padding:16px 18px;font-size:16px}
+}
+
+/* botão flutuante de WhatsApp */
+.wpp-float{position:fixed;bottom:26px;right:26px;z-index:998;width:60px;height:60px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 10px 28px rgba(37,211,102,.4);transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s}
+.wpp-float::before{content:'';position:absolute;inset:0;border-radius:50%;background:#25D366;opacity:.55;animation:wppPulse 2.4s ease-out infinite;z-index:-1}
+.wpp-float:hover{transform:scale(1.08);box-shadow:0 12px 34px rgba(37,211,102,.55)}
+.wpp-float:active{transform:scale(.95)}
+.wpp-float svg{width:30px;height:30px;fill:#fff;position:relative}
+@keyframes wppPulse{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.7);opacity:0}}
+@media(max-width:520px){.wpp-float{bottom:18px;right:18px;width:54px;height:54px}.wpp-float svg{width:27px;height:27px}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="glow"></div>
+
+<div class="top-bar">
+  <div class="top-inner">
+    <div class="top-row">
+      <a href="index.html" class="brand-mini">
+        <img src="assets/logo-icon.png" alt="" width="26" height="26">
+        <span>Via Permuta</span>
+      </a>
+      <button class="back-btn" id="backBtn" type="button" onclick="voltar()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Voltar</button>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+</div>
+
+<main>
+  <form id="quizForm" novalidate>
+
+    <!-- 1: perfil -->
+    <div class="step active" data-step="0">
+      <span class="q-eyebrow">Diagnóstico Protagonista · 1 min</span>
+      <h1 class="q-title">Primeiro, qual desses te descreve melhor hoje?</h1>
+      <div class="opt-list" data-field="perfil" data-required="true">
+        <button type="button" class="opt" data-value="Dono(a) de comércio ou loja"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Dono(a) de comércio ou loja</span></button>
+        <button type="button" class="opt" data-value="Prestador(a) de serviço"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Prestador(a) de serviço</span></button>
+        <button type="button" class="opt" data-value="Negócio de alimentação"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Negócio de alimentação</span></button>
+        <button type="button" class="opt" data-value="Estética, saúde ou bem-estar"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Estética, saúde ou bem-estar</span></button>
+        <button type="button" class="opt" data-value="Indústria ou produção própria"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Indústria ou produção própria</span></button>
+        <button type="button" class="opt" data-value="Outro tipo de negócio"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Outro tipo de negócio</span></button>
+      </div>
+    </div>
+
+    <!-- 2: nome -->
+    <div class="step" data-step="1">
+      <span class="q-eyebrow">Diagnóstico Protagonista</span>
+      <h1 class="q-title">Qual é o seu nome?</h1>
+      <div class="field-wrap">
+        <input type="text" class="q-input" id="f-nome" data-field="nome" data-required="true" placeholder="Digite seu nome" autocomplete="name">
+        <div class="field-err" id="err-nome"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Digite seu nome para continuar</div>
+      </div>
+      <button type="button" class="next-btn" onclick="avancar()">Prosseguir →</button>
+      <div class="next-hint">aperte Enter</div>
+    </div>
+
+    <!-- 3: whatsapp -->
+    <div class="step" data-step="2">
+      <span class="q-eyebrow">Diagnóstico Protagonista</span>
+      <h1 class="q-title">Qual é o seu WhatsApp?</h1>
+      <p class="q-sub">É por lá que vamos confirmar sua Reunião Protagonista.</p>
+      <div class="field-wrap">
+        <input type="tel" class="q-input" id="f-whatsapp" data-field="whatsapp" data-required="true" placeholder="(00) 00000-0000" inputmode="numeric" autocomplete="tel">
+        <div class="field-err" id="err-whatsapp"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Digite um WhatsApp válido com DDD</div>
+      </div>
+      <button type="button" class="next-btn" onclick="avancar()">Prosseguir →</button>
+      <div class="next-hint">aperte Enter</div>
+    </div>
+
+    <!-- 4: objetivo do crédito -->
+    <div class="step" data-step="3">
+      <span class="q-eyebrow">Diagnóstico Protagonista</span>
+      <h1 class="q-title">Qual é o PRINCIPAL motivo de você buscar crédito agora?</h1>
+      <div class="opt-list" data-field="objetivo_credito" data-required="true">
+        <button type="button" class="opt" data-value="Comprar mercadoria/estoque para vender"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Comprar mercadoria/estoque para vender</span></button>
+        <button type="button" class="opt" data-value="Reformar ou equipar o espaço do negócio"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Reformar ou equipar o espaço do negócio</span></button>
+        <button type="button" class="opt" data-value="Quitar dívidas e organizar o caixa"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Quitar dívidas e organizar o caixa</span></button>
+        <button type="button" class="opt" data-value="Ter capital de giro para crescer"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Ter capital de giro para crescer</span></button>
+        <button type="button" class="opt" data-value="Ainda estou entendendo como funciona a permuta"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Ainda estou entendendo como funciona a permuta</span></button>
+      </div>
+    </div>
+
+    <!-- 5: faturamento -->
+    <div class="step" data-step="4">
+      <span class="q-eyebrow">Diagnóstico Protagonista</span>
+      <h1 class="q-title">Qual é o faturamento MENSAL aproximado do seu negócio?</h1>
+      <div class="opt-list" data-field="faturamento" data-required="true">
+        <button type="button" class="opt" data-value="Até 20 mil"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Até 20 mil</span></button>
+        <button type="button" class="opt" data-value="De 21 mil a 50 mil"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">De 21 mil a 50 mil</span></button>
+        <button type="button" class="opt" data-value="De 51 mil a 90 mil"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">De 51 mil a 90 mil</span></button>
+        <button type="button" class="opt" data-value="De 91 mil a 150 mil"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">De 91 mil a 150 mil</span></button>
+        <button type="button" class="opt" data-value="De 151 mil a 300 mil"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">De 151 mil a 300 mil</span></button>
+        <button type="button" class="opt" data-value="Mais de 300 mil"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Mais de 300 mil</span></button>
+      </div>
+    </div>
+
+    <!-- 6: instagram -->
+    <div class="step" data-step="5">
+      <span class="q-eyebrow">Para conhecermos melhor o seu negócio</span>
+      <h1 class="q-title">Qual o Instagram do seu negócio?</h1>
+      <div class="field-wrap">
+        <div class="contact-field">
+          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          <input type="text" class="q-input" id="f-social" data-field="social" data-required="true" placeholder="@seunegocio">
+        </div>
+        <div class="field-err" id="err-social"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Preencha o Instagram do seu negócio</div>
+      </div>
+      <button type="button" class="next-btn" onclick="avancar()">Avançar →</button>
+      <div class="next-hint">aperte Enter</div>
+    </div>
+
+    <!-- 7: tempo de negocio -->
+    <div class="step" data-step="6">
+      <span class="q-eyebrow">Diagnóstico Protagonista</span>
+      <h1 class="q-title">Há quanto tempo o seu negócio está funcionando?</h1>
+      <div class="opt-list" data-field="tempo_negocio" data-required="true">
+        <button type="button" class="opt" data-value="Menos de 1 ano"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Menos de 1 ano</span></button>
+        <button type="button" class="opt" data-value="De 1 a 3 anos"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">De 1 a 3 anos</span></button>
+        <button type="button" class="opt" data-value="De 3 a 5 anos"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">De 3 a 5 anos</span></button>
+        <button type="button" class="opt" data-value="Mais de 5 anos"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Mais de 5 anos</span></button>
+      </div>
+    </div>
+
+    <!-- 8: segmento (dropdown pesquisavel) -->
+    <div class="step" data-step="7">
+      <span class="q-eyebrow">Diagnóstico Protagonista</span>
+      <h1 class="q-title">Em qual segmento o seu negócio atua?</h1>
+      <div class="field-wrap seg-select" id="segSelect" data-field="segmento" data-required="true">
+        <div class="seg-trigger" id="segTrigger" tabindex="0">
+          <span id="segLabel">Selecione o segmento</span>
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="seg-panel" id="segPanel">
+          <input type="text" class="seg-search" id="segSearch" placeholder="Buscar segmento…">
+          <div id="segOptions"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9: urgencia -->
+    <div class="step" data-step="8">
+      <span class="q-eyebrow">Diagnóstico Protagonista</span>
+      <h1 class="q-title">Para quando você quer começar a usar o crédito Via Permuta?</h1>
+      <div class="opt-list" data-field="urgencia" data-required="true">
+        <button type="button" class="opt" data-value="É urgente, preciso começar AGORA"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">É urgente, preciso começar AGORA</span></button>
+        <button type="button" class="opt" data-value="Próximos 30 dias"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Próximos 30 dias</span></button>
+        <button type="button" class="opt" data-value="Em até 3 meses"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Em até 3 meses</span></button>
+        <button type="button" class="opt" data-value="Ainda estou pesquisando"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Ainda estou pesquisando</span></button>
+      </div>
+    </div>
+
+    <!-- 10: socios -->
+    <div class="step" data-step="9">
+      <span class="q-eyebrow">Diagnóstico Protagonista</span>
+      <h1 class="q-title">Você tem sócio(s) no negócio?</h1>
+      <div class="opt-list" data-field="socios" data-required="true">
+        <button type="button" class="opt" data-value="Sim"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Sim</span></button>
+        <button type="button" class="opt" data-value="Não"><span class="opt-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="opt-txt">Não</span></button>
+      </div>
+    </div>
+
+    <!-- 11: confirmar contato -->
+    <div class="step" data-step="10">
+      <span class="q-eyebrow">Quase lá</span>
+      <h1 class="q-title">Perfeito. Agora vamos agendar sua Reunião Protagonista.</h1>
+      <p class="q-sub">Confirme seus dados de contato:</p>
+      <div class="field-wrap">
+        <div class="contact-field">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <input type="text" class="q-input" id="f-nomeConfirma" data-field="nomeConfirma" data-required="true" placeholder="Seu nome">
+        </div>
+      </div>
+      <div class="field-wrap">
+        <div class="contact-field">
+          <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z" fill="none" stroke="none"/><path d="M22 6l-10 7L2 6"/><path d="M2 6h20v12H2z"/></svg>
+          <input type="email" class="q-input" id="f-email" data-field="email" data-required="true" placeholder="Digite seu e-mail" autocomplete="email">
+        </div>
+        <div class="field-err" id="err-email"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Digite um e-mail válido</div>
+      </div>
+      <div class="field-wrap">
+        <div class="contact-field">
+          <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <input type="tel" class="q-input" id="f-whatsappConfirma" data-field="whatsappConfirma" placeholder="(00) 00000-0000" inputmode="numeric">
+        </div>
+      </div>
+      <button type="button" class="next-btn" id="submitBtn" onclick="enviar()">Prosseguir →</button>
+      <p class="foot-note">Ao confirmar, você concorda em receber contato da <b>Via Permuta</b> por WhatsApp e e-mail sobre sua Reunião Protagonista.</p>
+    </div>
+
+    <!-- 12: sucesso -->
+    <div class="step" data-step="11">
+      <div class="success-wrap">
+        <div class="success-ico"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h1>Pré-inscrição confirmada com sucesso!</h1>
+        <p>Um especialista da Via Permuta entrará em contato em até 24 horas para agendar sua Reunião Protagonista.</p>
+
+        <div class="urgent-box">
+          <div class="u-lbl">⚡ Não quer esperar?</div>
+          <a href="#" id="wppUrgente" target="_blank" class="wpp-btn"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m0 1.67c2.24 0 4.35.87 5.93 2.46a8.23 8.23 0 0 1 2.42 5.85c0 4.56-3.71 8.27-8.28 8.27a8.3 8.3 0 0 1-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 0 1-1.26-4.4c0-4.57 3.72-8.32 8.18-8.32M8.53 7.4c-.16 0-.43.06-.66.31c-.22.25-.87.85-.87 2.07c0 1.22.89 2.4 1.01 2.56c.13.17 1.75 2.67 4.31 3.74c2.13.89 2.56.71 3.03.67c.46-.04 1.5-.61 1.71-1.2c.21-.59.21-1.09.15-1.2c-.07-.11-.24-.17-.5-.3c-.27-.13-1.58-.78-1.82-.87c-.25-.09-.43-.13-.6.14c-.19.26-.7.87-.86 1.05c-.16.19-.32.21-.58.07c-.27-.13-1.13-.42-2.15-1.33c-.79-.71-1.33-1.58-1.48-1.85c-.16-.26-.02-.4.11-.53c.12-.12.27-.32.4-.48c.14-.16.18-.27.28-.45c.09-.19.05-.35-.02-.49c-.07-.13-.6-1.49-.85-2.03c-.22-.5-.44-.48-.6-.48z"/></svg><span id="wppUrgenteLabel">QUERO SER ATENDIDO AGORA</span></a>
+          <div class="wpp-note">aperte o botão caso precise pular a fila</div>
+        </div>
+
+        <div class="deliv-box">
+          <h3>📈 O que você recebe na Reunião Protagonista</h3>
+          <div class="deliv-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span><strong>Simulação do seu crédito</strong> (quanto você pode pegar e como paga com produto/serviço)</span></div>
+          <div class="deliv-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span><strong>Diagnóstico do seu negócio</strong> hoje — onde travar menos e crescer mais</span></div>
+          <div class="deliv-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span><strong>Acesso à Rede Protagonistas</strong> — comunidade de empreendedores que se apoiam</span></div>
+          <div class="deliv-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span><strong>Direção prática</strong> dos próximos passos, sem letra miúda</span></div>
+          <div class="deliv-value">
+            <div class="deliv-old">Crédito + Conhecimento + Rede + Direção</div>
+            <div class="deliv-new">Tudo isso Via Permuta.</div>
+          </div>
+        </div>
+
+        <div class="next-steps">
+          <h3>🕐 O que acontece agora</h3>
+          <div class="ns-item"><div class="ns-num">1</div><p>Nosso time analisa seu perfil</p></div>
+          <div class="ns-item"><div class="ns-num">2</div><p>Se você se qualificar, recebe WhatsApp confirmando vaga</p></div>
+          <div class="ns-item"><div class="ns-num">3</div><p>Agendamos sua Reunião Protagonista</p></div>
+          <div class="ns-item"><div class="ns-num">4</div><p>Você recebe a simulação de crédito na própria reunião</p></div>
+        </div>
+
+        <div class="urgent-box">
+          <div class="u-lbl">⚡ Precisa de atendimento urgente?</div>
+          <p style="font-size:13px;color:var(--txt-dim);margin-bottom:14px;">Se sua situação é crítica e você não pode esperar 24h:</p>
+          <a href="#" id="wppUrgente2" target="_blank" class="wpp-btn"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m0 1.67c2.24 0 4.35.87 5.93 2.46a8.23 8.23 0 0 1 2.42 5.85c0 4.56-3.71 8.27-8.28 8.27a8.3 8.3 0 0 1-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 0 1-1.26-4.4c0-4.57 3.72-8.32 8.18-8.32M8.53 7.4c-.16 0-.43.06-.66.31c-.22.25-.87.85-.87 2.07c0 1.22.89 2.4 1.01 2.56c.13.17 1.75 2.67 4.31 3.74c2.13.89 2.56.71 3.03.67c.46-.04 1.5-.61 1.71-1.2c.21-.59.21-1.09.15-1.2c-.07-.11-.24-.17-.5-.3c-.27-.13-1.58-.78-1.82-.87c-.25-.09-.43-.13-.6.14c-.19.26-.7.87-.86 1.05c-.16.19-.32.21-.58.07c-.27-.13-1.13-.42-2.15-1.33c-.79-.71-1.33-1.58-1.48-1.85c-.16-.26-.02-.4.11-.53c.12-.12.27-.32.4-.48c.14-.16.18-.27.28-.45c.09-.19.05-.35-.02-.49c-.07-.13-.6-1.49-.85-2.03c-.22-.5-.44-.48-.6-.48z"/></svg>QUERO SER ATENDIDO AGORA</a>
+          <div class="wpp-note">aperte o botão caso precise pular a fila</div>
+        </div>
+
+        <p class="foot-note">📞 Fique atento ao WhatsApp e e-mail!<br><b>Equipe Via Permuta</b></p>
+        <p class="mantra">"A liberdade é uma decisão."</p>
+      </div>
+    </div>
+
+  </form>
+</main>
+
+<script>
+(function(){
+  'use strict';
+
+  var TOTAL_STEPS = 12; // 0..10 perguntas, 11 = sucesso
+  var STEPS_WITH_PROGRESS = 11; // sucesso não conta pra barra
+  var current = 0;
+  var history = [0];
+  var answers = {};
+
+  // ── CONFIGURAÇÃO — troque estes dois valores antes de publicar ──
+  // Número de WhatsApp da Via Permuta em formato internacional (DDI+DDD+número, só dígitos)
+  var WHATSAPP_NUM = '5534992280158';
+  // URL da Edge Function `diagnostico-lead` deste projeto Supabase (Project Settings → Functions)
+  var LEAD_ENDPOINT = 'https://pcvraalvtnmogirblvxq.supabase.co/functions/v1/diagnostico-lead';
+  // ──────────────────────────────────────────────────────────────
+
+  var sessionId = (function(){
+    try{
+      if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    }catch(e){}
+    // fallback pra navegadores sem crypto.randomUUID
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+      var r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8);
+      return v.toString(16);
+    });
+  })();
+
+  // Salva o progresso no CRM em segundo plano — nunca trava nem quebra o formulário.
+  // Chamado a cada etapa concluída assim que já temos nome+whatsapp (o mínimo pra virar lead).
+  function salvarProgresso(etapa, completo){
+    if(!answers.nome && !answers.nomeConfirma) return;
+    if(!answers.whatsapp && !answers.whatsappConfirma) return;
+    if(!LEAD_ENDPOINT || LEAD_ENDPOINT.indexOf('SUA_URL_SUPABASE_AQUI') === 0) return;
+    try{
+      fetch(LEAD_ENDPOINT, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        keepalive: true,
+        body: JSON.stringify({ session_id: sessionId, etapa: etapa, completo: !!completo, answers: answers })
+      }).catch(function(){ /* silencioso: nunca atrapalha a experiência do visitante */ });
+    }catch(e){ /* fetch indisponível ou bloqueado — segue o formulário normalmente */ }
+  }
+
+  var segmentos = ['Alimentação (restaurante, lanchonete, padaria)','Comércio e varejo','Beleza e estética',
+    'Saúde e bem-estar','Moda e confecção','Construção e materiais','Automotivo','Educação e treinamentos',
+    'Serviços em geral','Agropecuário','Tecnologia','Turismo e eventos','Indústria e produção própria','Outro'];
+
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
+  var progressFill = document.getElementById('progressFill');
+  var backBtn = document.getElementById('backBtn');
+
+  // Mostra a etapa `idx`. Importante: o `cur` só sai do fluxo (display:none)
+  // ANTES do `next` entrar (display:block) — nunca os dois ao mesmo tempo,
+  // senão o container cresce pra caber os dois e "salta" quando o `cur` some.
+  function showStep(idx){
+    var cur = document.querySelector('.step.active');
+    var next = steps[idx];
+    if(cur === next) return;
+    current = idx;
+    var pct = idx >= STEPS_WITH_PROGRESS ? 100 : Math.round((idx / STEPS_WITH_PROGRESS) * 100);
+    progressFill.style.width = pct + '%';
+    backBtn.classList.toggle('show', idx > 0 && idx < STEPS_WITH_PROGRESS);
+
+    function entrarProximo(){
+      next.classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+      var firstInput = next.querySelector('.q-input');
+      if(firstInput && window.innerWidth > 640) setTimeout(function(){ firstInput.focus(); }, 260);
+    }
+
+    if(cur){
+      cur.classList.add('leaving');
+      setTimeout(function(){
+        cur.classList.remove('active','leaving');
+        entrarProximo();
+      }, 260);
+    } else {
+      entrarProximo();
+    }
+  }
+
+  function voltar(){
+    if(history.length < 2) return;
+    history.pop();
+    showStep(history[history.length-1]);
+  }
+  window.voltar = voltar;
+
+  function irPara(idx){
+    history.push(idx);
+    showStep(idx);
+  }
+
+  // ── máscara de telefone ──────────────────────────────────
+  function maskPhone(v){
+    v = v.replace(/\D/g,'').slice(0,11);
+    if(v.length > 10) return v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3');
+    if(v.length > 6) return v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+    if(v.length > 2) return v.replace(/(\d{2})(\d{0,5})/,'($1) $2');
+    if(v.length > 0) return v.replace(/(\d{0,2})/,'($1');
+    return v;
+  }
+  ['f-whatsapp','f-whatsappConfirma'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.addEventListener('input', function(){ el.value = maskPhone(el.value); clearErr(el); });
+  });
+
+  function clearErr(el){
+    var field = el.dataset.field;
+    var err = document.getElementById('err-' + field);
+    if(err) err.classList.remove('show');
+    el.style.borderColor = '';
+  }
+  document.querySelectorAll('.q-input').forEach(function(el){
+    el.addEventListener('input', function(){ clearErr(el); });
+    el.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); avancar(); } });
+  });
+
+  // ── opções single-select: clicar já avança sozinho ───────
+  document.querySelectorAll('.opt-list').forEach(function(list){
+    var field = list.dataset.field;
+    list.querySelectorAll('.opt').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        list.querySelectorAll('.opt').forEach(function(b){ b.classList.remove('checked'); });
+        btn.classList.add('checked');
+        answers[field] = btn.dataset.value;
+        setTimeout(function(){ avancar(); }, 220);
+      });
+    });
+  });
+
+  // ── dropdown de segmento pesquisável ──────────────────────
+  var segTrigger = document.getElementById('segTrigger');
+  var segPanel = document.getElementById('segPanel');
+  var segLabel = document.getElementById('segLabel');
+  var segSearch = document.getElementById('segSearch');
+  var segOptions = document.getElementById('segOptions');
+  var segSelectEl = document.getElementById('segSelect');
+
+  function renderSegOptions(filtro){
+    var f = (filtro||'').toLowerCase();
+    var lista = segmentos.filter(function(s){ return s.toLowerCase().indexOf(f) > -1; });
+    segOptions.innerHTML = lista.length
+      ? lista.map(function(s){ return '<div class="seg-opt" data-value="'+s+'">'+s+'</div>'; }).join('')
+      : '<div class="seg-empty">Nenhum segmento encontrado</div>';
+    segOptions.querySelectorAll('.seg-opt').forEach(function(el){
+      el.addEventListener('click', function(){
+        var v = el.dataset.value;
+        answers.segmento = v;
+        segLabel.textContent = v;
+        segTrigger.classList.add('filled');
+        closeSeg();
+        setTimeout(function(){ avancar(); }, 200);
+      });
+    });
+  }
+  function openSeg(){
+    segPanel.classList.add('open');
+    segTrigger.classList.add('open');
+    segSearch.value='';
+    renderSegOptions('');
+    setTimeout(function(){ segSearch.focus(); }, 50);
+  }
+  function closeSeg(){
+    segPanel.classList.remove('open');
+    segTrigger.classList.remove('open');
+  }
+  segTrigger.addEventListener('click', function(){
+    segPanel.classList.contains('open') ? closeSeg() : openSeg();
+  });
+  segSearch.addEventListener('input', function(){ renderSegOptions(segSearch.value); });
+  document.addEventListener('click', function(e){
+    if(!segSelectEl.contains(e.target)) closeSeg();
+  });
+
+  // ── validação + avanço ────────────────────────────────────
+  function validarPasso(idx){
+    var step = steps[idx];
+    var required = step.querySelectorAll('[data-required="true"]');
+    for(var i=0;i<required.length;i++){
+      var el = required[i];
+      var field = el.dataset.field;
+      if(el.classList.contains('opt-list')){
+        if(!answers[field]) return field;
+      } else if(el.id === 'segSelect'){
+        if(!answers.segmento) return field;
+      } else if(el.tagName === 'INPUT'){
+        var v = el.value.trim();
+        if(field === 'email'){
+          if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return field;
+        } else if(field === 'nome' || field === 'nomeConfirma' || field === 'social'){
+          if(v.length < 2) return field;
+        } else if(field === 'whatsapp'){
+          if(v.replace(/\D/g,'').length < 10) return field;
+        } else if(!v){
+          return field;
+        }
+        answers[field] = v;
+      }
+    }
+    return null;
+  }
+
+  function avancar(){
+    var falha = validarPasso(current);
+    if(falha){
+      var el = document.getElementById('f-' + falha) || document.querySelector('[data-field="'+falha+'"]');
+      var err = document.getElementById('err-' + falha);
+      if(err) err.classList.add('show');
+      if(el && el.tagName === 'INPUT'){ el.style.borderColor = 'var(--red)'; el.focus(); }
+      return;
+    }
+    // pré-preenche a etapa final com nome e whatsapp já coletados
+    if(current === 9){
+      document.getElementById('f-nomeConfirma').value = answers.nome || '';
+      document.getElementById('f-whatsappConfirma').value = answers.whatsapp || '';
+    }
+    salvarProgresso(current, false);
+    if(current < STEPS_WITH_PROGRESS - 1){
+      irPara(current + 1);
+    }
+  }
+  window.avancar = avancar;
+
+  function enviar(){
+    var falha = validarPasso(current);
+    if(falha){
+      var el = document.getElementById('f-' + falha);
+      var err = document.getElementById('err-' + falha);
+      if(err) err.classList.add('show');
+      if(el){ el.style.borderColor = 'var(--red)'; el.focus(); }
+      return;
+    }
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+
+    // Link do WhatsApp sem mensagem pré-escrita — o lead já foi salvo no CRM
+    // (ver salvarProgresso), então esse botão é só um atalho de contato direto.
+    var wppLink = 'https://wa.me/' + WHATSAPP_NUM;
+    document.getElementById('wppUrgente').href = wppLink;
+    document.getElementById('wppUrgente2').href = wppLink;
+
+    salvarProgresso(10, true);
+
+    try{
+      localStorage.setItem('viapermuta_diagnostico_' + Date.now(), JSON.stringify(answers));
+    }catch(e){}
+
+    setTimeout(function(){
+      irPara(11);
+    }, 500);
+  }
+  window.enviar = enviar;
+
+  document.getElementById('quizForm').addEventListener('submit', function(e){ e.preventDefault(); });
+
+  showStep(0);
+})();
+</script>
+
+<a href="#" id="wppFloat" target="_blank" rel="noopener" class="wpp-float" aria-label="Falar com a Via Permuta no WhatsApp" onclick="if(this.getAttribute('href')==='#'){alert('Configure WHATSAPP_NUM no topo do script deste arquivo.');return false;}">
+  <svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m0 1.67c2.24 0 4.35.87 5.93 2.46a8.23 8.23 0 0 1 2.42 5.85c0 4.56-3.71 8.27-8.28 8.27a8.3 8.3 0 0 1-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 0 1-1.26-4.4c0-4.57 3.72-8.32 8.18-8.32M8.53 7.4c-.16 0-.43.06-.66.31c-.22.25-.87.85-.87 2.07c0 1.22.89 2.4 1.01 2.56c.13.17 1.75 2.67 4.31 3.74c2.13.89 2.56.71 3.03.67c.46-.04 1.5-.61 1.71-1.2c.21-.59.21-1.09.15-1.2c-.07-.11-.24-.17-.5-.3c-.27-.13-1.58-.78-1.82-.87c-.25-.09-.43-.13-.6.14c-.19.26-.7.87-.86 1.05c-.16.19-.32.21-.58.07c-.27-.13-1.13-.42-2.15-1.33c-.79-.71-1.33-1.58-1.48-1.85c-.16-.26-.02-.4.11-.53c.12-.12.27-.32.4-.48c.14-.16.18-.27.28-.45c.09-.19.05-.35-.02-.49c-.07-.13-.6-1.49-.85-2.03c-.22-.5-.44-.48-.6-.48z"/></svg>
+</a>
+<script>
+  (function(){
+    var num = '5534992280158'; // mesmo valor de WHATSAPP_NUM acima
+    if(num.indexOf('SEU_WHATSAPP') !== 0){
+      document.getElementById('wppFloat').href = 'https://wa.me/' + num;
+    }
+  })();
+</script>
+</body>
+</html>

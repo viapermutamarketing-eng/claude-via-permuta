@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Painel · Via Permuta</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Nunito:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --gold:#B08D4F;--gold-light:#D9BD82;--gold-soft:#E7D6AC;--gold-deep:#7A5E30;
+  --ink:#0E0A08;--cream:#F7F0E4;--night:#170D0E;--night-2:#1D1113;--white:#FFFFFF;
+  --card:#211417;--card-2:#28181B;--border:rgba(247,240,228,.10);--border-2:rgba(247,240,228,.06);
+  --txt:#EFE6D8;--txt-dim:rgba(239,230,216,.7);--txt-faint:rgba(239,230,216,.5);
+  --green:#3FBF7F;--red:#E4685B;--amber:#E0A83F;--blue:#5B9FE4;
+  --mono:'JetBrains Mono',monospace;--serif:'Fraunces',Georgia,serif;--sans:'Nunito',system-ui,sans-serif;
+  --sb-w:230px;--tb-h:60px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--night-2);color:var(--txt);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{color:inherit}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ── login ── */
+#loginScreen{position:fixed;inset:0;z-index:999;background:var(--night);display:flex;align-items:center;justify-content:center;padding:24px}
+.login-box{width:100%;max-width:380px;background:var(--card);border:1px solid var(--border-2);border-radius:20px;padding:38px 34px}
+.login-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:26px}
+.login-logo img{filter:drop-shadow(0 0 5px rgba(243,148,27,.6)) drop-shadow(0 0 2px rgba(243,148,27,.5))}
+.login-logo span{font-family:var(--serif);font-weight:600;font-size:19px;color:var(--cream)}
+.login-box h1{font-family:var(--serif);font-size:21px;font-weight:500;color:var(--cream);margin-bottom:6px;text-align:center}
+.login-box p{font-size:13px;color:var(--txt-faint);text-align:center;margin-bottom:26px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11.5px;font-weight:700;color:var(--txt-dim);margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em}
+.field input,.field select,.field textarea{width:100%;background:var(--night-2);border:1.5px solid var(--border-2);border-radius:10px;padding:12px 14px;font-size:14.5px;color:var(--cream);outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--gold)}
+.field textarea{resize:vertical;min-height:70px}
+.btn{border:none;border-radius:10px;padding:12px 18px;font-weight:800;font-size:14px;cursor:pointer;transition:transform .12s,box-shadow .15s,background .15s;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn-gold{background:var(--gold);color:var(--ink)}
+.btn-gold:hover{background:var(--gold-light);box-shadow:0 8px 22px rgba(176,141,79,.3)}
+.btn-ghost{background:var(--card-2);color:var(--txt);border:1.5px solid var(--border-2)}
+.btn-ghost:hover{border-color:rgba(176,141,79,.45)}
+.btn-danger{background:rgba(228,104,91,.15);color:var(--red);border:1.5px solid rgba(228,104,91,.35)}
+.btn-danger:hover{background:rgba(228,104,91,.25)}
+.btn-block{width:100%}
+.btn:active{transform:scale(.97)}
+.login-err{color:var(--red);font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;display:none}
+.login-err.show{display:block}
+
+/* ── shell ── */
+#app{display:none}
+#app.ready{display:block}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sb-w);background:var(--night);border-right:1px solid var(--border-2);display:flex;flex-direction:column;z-index:40;transition:transform .2s}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:20px 20px 18px;border-bottom:1px solid var(--border-2)}
+.sb-brand img{filter:drop-shadow(0 0 5px rgba(243,148,27,.6)) drop-shadow(0 0 2px rgba(243,148,27,.5))}
+.sb-brand span{font-family:var(--serif);font-weight:600;font-size:16px;color:var(--cream)}
+.sb-nav{flex:1;overflow-y:auto;padding:14px 12px}
+.sb-group-label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-faint);padding:14px 10px 6px}
+.sb-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:700;color:var(--txt-dim);cursor:pointer;transition:background .15s,color .15s;position:relative}
+.sb-item:hover{background:var(--card);color:var(--txt)}
+.sb-item.active{background:linear-gradient(135deg,rgba(176,141,79,.18),transparent);color:var(--cream)}
+.sb-item.active::before{content:'';position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--gold)}
+.sb-item svg{width:17px;height:17px;stroke:currentColor;stroke-width:2;fill:none;flex-shrink:0}
+.sb-dot{width:8px;height:8px;border-radius:50%;background:var(--green);margin-left:auto;box-shadow:0 0 0 3px rgba(63,191,127,.2);display:none}
+.sb-dot.show{display:block;animation:dotPulse 1.8s ease-in-out infinite}
+@keyframes dotPulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sb-user{border-top:1px solid var(--border-2);padding:14px 18px;display:flex;align-items:center;gap:10px}
+.sb-user-name{font-size:12.5px;font-weight:700;color:var(--txt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-user button{background:none;border:none;color:var(--txt-faint);padding:4px}
+.sb-user button:hover{color:var(--red)}
+
+.main{margin-left:var(--sb-w);min-height:100vh}
+.topbar{height:var(--tb-h);border-bottom:1px solid var(--border-2);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;background:rgba(29,17,19,.85);backdrop-filter:blur(10px);z-index:30}
+.tb-title{font-family:var(--serif);font-size:19px;font-weight:500;color:var(--cream)}
+.tb-actions{display:flex;gap:10px;align-items:center}
+.view{padding:28px;display:none}
+.view.active{display:block;animation:fadeIn .25s ease both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── cards & grids ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border-2);border-radius:14px;padding:18px 20px}
+.stat-card .n{font-family:var(--serif);font-size:28px;font-weight:600;color:var(--cream)}
+.stat-card .l{font-size:12px;color:var(--txt-faint);margin-top:4px;font-weight:600}
+.panel{background:var(--card);border:1px solid var(--border-2);border-radius:16px;padding:22px;margin-bottom:20px}
+.panel h2{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--cream);margin-bottom:16px}
+.empty-state{text-align:center;padding:40px 20px;color:var(--txt-faint);font-size:13.5px}
+
+/* ── kanban ── */
+.kanban-wrap{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px}
+.kanban-col{flex:0 0 260px;background:var(--card);border:1px solid var(--border-2);border-radius:14px;display:flex;flex-direction:column;max-height:calc(100vh - 160px)}
+.kanban-col.dragover{border-color:var(--gold)}
+.kc-head{padding:14px 16px;border-bottom:1px solid var(--border-2);display:flex;justify-content:space-between;align-items:center}
+.kc-head h3{font-size:12.5px;font-weight:800;color:var(--txt);text-transform:uppercase;letter-spacing:.03em}
+.kc-count{font-family:var(--mono);font-size:11px;color:var(--txt-faint);background:var(--night-2);padding:2px 8px;border-radius:20px}
+.kc-body{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60px}
+.lead-card{background:var(--night-2);border:1px solid var(--border-2);border-radius:11px;padding:12px 13px;cursor:grab;transition:border-color .15s,transform .1s}
+.lead-card:hover{border-color:rgba(176,141,79,.4)}
+.lead-card.dragging{opacity:.4}
+.lead-card .lc-name{font-size:13.5px;font-weight:800;color:var(--cream);margin-bottom:3px}
+.lead-card .lc-meta{font-size:11.5px;color:var(--txt-faint);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.badge{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em}
+.badge-amber{background:rgba(224,168,63,.16);color:var(--amber)}
+.badge-red{background:rgba(228,104,91,.16);color:var(--red)}
+.badge-green{background:rgba(63,191,127,.16);color:var(--green)}
+
+/* ── table ── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt-faint);border-bottom:1px solid var(--border-2);white-space:nowrap}
+td{padding:12px 14px;border-bottom:1px solid var(--border-2);color:var(--txt);white-space:nowrap}
+tbody tr{cursor:pointer;transition:background .12s}
+tbody tr:hover{background:var(--card-2)}
+.search-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-bar input,.search-bar select{background:var(--night-2);border:1.5px solid var(--border-2);border-radius:10px;padding:10px 14px;font-size:13.5px;color:var(--cream);outline:none}
+.search-bar input{flex:1;min-width:180px}
+
+/* ── modal ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(9,5,6,.72);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
+.modal-backdrop.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:18px;width:100%;max-width:600px;padding:28px;animation:modalIn .2s ease both}
+@keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-head h2{font-family:var(--serif);font-size:19px;font-weight:600;color:var(--cream)}
+.modal-close{background:none;border:none;color:var(--txt-faint);font-size:20px;line-height:1;padding:4px}
+.modal-close:hover{color:var(--txt)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-actions{display:flex;gap:10px;margin-top:22px;justify-content:flex-end;flex-wrap:wrap}
+.modal-actions .btn-danger{margin-right:auto}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border-2);margin-bottom:18px}
+.tab{padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--txt-faint);border-bottom:2px solid transparent;cursor:pointer}
+.tab.active{color:var(--gold-light);border-color:var(--gold)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.note-item{background:var(--night-2);border:1px solid var(--border-2);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:13px}
+.note-item .n-meta{font-size:11px;color:var(--txt-faint);margin-bottom:4px;font-family:var(--mono)}
+.ativ-item{display:flex;align-items:center;gap:10px;background:var(--night-2);border:1px solid var(--border-2);border-radius:10px;padding:10px 13px;margin-bottom:8px}
+.ativ-item.late{border-color:rgba(228,104,91,.4)}
+.ativ-item input[type=checkbox]{width:17px;height:17px;accent-color:var(--gold)}
+.ativ-item .a-body{flex:1;font-size:13px}
+.ativ-item .a-date{font-family:var(--mono);font-size:11px;color:var(--txt-faint)}
+
+/* ── diagnostico feed ── */
+.diag-item{display:flex;align-items:center;gap:14px;background:var(--night-2);border:1px solid var(--border-2);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.diag-dot{width:10px;height:10px;border-radius:50%;background:var(--txt-faint);flex-shrink:0}
+.diag-dot.live{background:var(--green);box-shadow:0 0 0 4px rgba(63,191,127,.18);animation:dotPulse 1.6s ease-in-out infinite}
+.diag-dot.done{background:var(--gold)}
+.diag-body{flex:1;min-width:0}
+.diag-name{font-weight:800;color:var(--cream);font-size:14px}
+.diag-sub{font-size:12px;color:var(--txt-faint)}
+.diag-progress{width:100px;height:5px;border-radius:99px;background:var(--border);overflow:hidden;flex-shrink:0}
+.diag-progress-fill{height:100%;background:var(--gold);border-radius:99px}
+
+/* ── listas / import ── */
+.dropzone{border:2px dashed var(--border);border-radius:14px;padding:34px;text-align:center;color:var(--txt-faint);font-size:13.5px;cursor:pointer;transition:border-color .15s}
+.dropzone:hover,.dropzone.drag{border-color:var(--gold)}
+.import-map-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;padding:6px 0;font-size:13px}
+
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:10px}
+.toast{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 18px;font-size:13px;font-weight:700;color:var(--cream);box-shadow:0 10px 30px rgba(0,0,0,.4);animation:toastIn .2s ease both}
+.toast.err{border-color:rgba(228,104,91,.4);color:var(--red)}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.hamburger{display:none;background:none;border:none;color:var(--txt);padding:6px}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .hamburger{display:block}
+  .field-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="assets/logo-icon.png" alt="" width="26" height="26">
+      <span>Via Permuta</span>
+    </div>
+    <h1>Painel de Prospecção</h1>
+    <p>Entre com sua conta da equipe</p>
+    <div class="field"><label>E-mail</label><input type="email" id="loginEmail" autocomplete="username" placeholder="voce@viapermuta.com.br"></div>
+    <div class="field"><label>Senha</label><input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••"></div>
+    <button class="btn btn-gold btn-block" id="loginBtn" onclick="fazerLogin()">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <img src="assets/logo-icon.png" alt="" width="24" height="24">
+      <span>Via Permuta</span>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-group-label">Prospecção</div>
+      <div class="sb-item" data-view="hoje" onclick="switchView('hoje')">
+        <svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Hoje
+      </div>
+      <div class="sb-item" data-view="pipeline" onclick="switchView('pipeline')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="18" rx="1"/><rect x="10.5" y="3" width="6" height="12" rx="1"/><rect x="18" y="3" width="6" height="8" rx="1"/></svg>Pipeline
+      </div>
+      <div class="sb-item" data-view="leads" onclick="switchView('leads')">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Leads
+      </div>
+      <div class="sb-item" data-view="diagnostico" onclick="switchView('diagnostico')">
+        <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Diagnóstico<span class="sb-dot" id="diagDot"></span>
+      </div>
+      <div class="sb-item" data-view="listas" onclick="switchView('listas')">
+        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Listas
+      </div>
+      <div class="sb-item" data-view="atividades" onclick="switchView('atividades')">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Atividades
+      </div>
+    </nav>
+    <div class="sb-user">
+      <div class="sb-user-name" id="sbUserName">—</div>
+      <button title="Sair" onclick="fazerLogout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+        <div class="tb-title" id="tbTitle">Hoje</div>
+      </div>
+      <div class="tb-actions" id="tbActions"></div>
+    </div>
+
+    <!-- HOJE -->
+    <div class="view" id="view-hoje">
+      <div class="stat-grid" id="hojeStats"></div>
+      <div class="panel">
+        <h2>Atividades de hoje</h2>
+        <div id="hojeAtividades"></div>
+      </div>
+    </div>
+
+    <!-- PIPELINE -->
+    <div class="view" id="view-pipeline">
+      <div class="kanban-wrap" id="kanbanWrap"></div>
+    </div>
+
+    <!-- LEADS -->
+    <div class="view" id="view-leads">
+      <div class="search-bar">
+        <input type="text" id="leadsSearch" placeholder="Buscar por nome, telefone, e-mail…" oninput="renderLeads()">
+        <select id="leadsFiltroEstagio" onchange="renderLeads()"><option value="">Todos os estágios</option></select>
+      </div>
+      <div class="panel tbl-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>Negócio</th><th>Telefone</th><th>Estágio</th><th>Canal</th><th>Criado em</th></tr></thead>
+          <tbody id="leadsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DIAGNÓSTICO -->
+    <div class="view" id="view-diagnostico">
+      <div class="panel">
+        <h2>Preenchendo agora / concluídos recentemente</h2>
+        <div id="diagFeed"></div>
+      </div>
+    </div>
+
+    <!-- LISTAS -->
+    <div class="view" id="view-listas">
+      <div class="panel">
+        <h2>Importar lista de prospecção</h2>
+        <div class="dropzone" id="dropzone" onclick="document.getElementById('csvInput').click()">
+          Arraste um CSV aqui ou clique para escolher<br><span style="font-size:11.5px">colunas como "telefone", "whatsapp", "celular" são reconhecidas automaticamente</span>
+        </div>
+        <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="lidarComCsv(this.files[0])">
+        <div id="importPreview"></div>
+      </div>
+      <div class="panel">
+        <h2>Listas importadas</h2>
+        <div id="listasGrid"></div>
+      </div>
+    </div>
+
+    <!-- ATIVIDADES -->
+    <div class="view" id="view-atividades">
+      <div class="panel">
+        <h2>Pendentes</h2>
+        <div id="ativPendentes"></div>
+      </div>
+      <div class="panel">
+        <h2>Concluídas recentemente</h2>
+        <div id="ativConcluidas"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: LEAD ══ -->
+<div class="modal-backdrop" id="leadModalBackdrop">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-head">
+      <h2 id="leadModalTitle">Lead</h2>
+      <button class="modal-close" onclick="fecharModal('leadModalBackdrop')">✕</button>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-tab="dados" onclick="trocarTab('dados')">Dados</div>
+      <div class="tab" data-tab="notas" onclick="trocarTab('notas')">Notas</div>
+      <div class="tab" data-tab="ativ" onclick="trocarTab('ativ')">Atividades</div>
+    </div>
+    <div class="tab-panel active" id="tab-dados">
+      <div class="field-row">
+        <div class="field"><label>Nome / decisor</label><input id="ld-decisor"></div>
+        <div class="field"><label>Negócio</label><input id="ld-empresa"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Telefone</label><input id="ld-telefone"></div>
+        <div class="field"><label>E-mail</label><input id="ld-email"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Cidade</label><input id="ld-cidade"></div>
+        <div class="field"><label>Segmento</label><input id="ld-segmento"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Faturamento médio</label><input id="ld-faturamento_medio"></div>
+        <div class="field"><label>Estágio</label><select id="ld-estagio"></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Canal</label><input id="ld-canal"></div>
+        <div class="field"><label>Valor potencial (R$)</label><input id="ld-valor_potencial" type="number" step="0.01"></div>
+      </div>
+      <div class="field"><label>Objetivo do crédito</label><textarea id="ld-objetivo_credito"></textarea></div>
+      <div class="field"><label>Observações</label><textarea id="ld-obs"></textarea></div>
+    </div>
+    <div class="tab-panel" id="tab-notas">
+      <div id="leadNotasList"></div>
+      <div class="field"><textarea id="novaNota" placeholder="Registrar uma nota ou ligação…"></textarea></div>
+      <button class="btn btn-ghost" onclick="adicionarNota()">+ Adicionar nota</button>
+    </div>
+    <div class="tab-panel" id="tab-ativ">
+      <div id="leadAtivList"></div>
+      <div class="field-row">
+        <div class="field"><label>Data</label><input type="date" id="novaAtivData"></div>
+        <div class="field"><label>Observação</label><input id="novaAtivObs" placeholder="Ligar novamente, enviar proposta…"></div>
+      </div>
+      <button class="btn btn-ghost" onclick="adicionarAtividade()">+ Agendar atividade</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="excluirLeadAtual()">Excluir lead</button>
+      <button class="btn btn-ghost" onclick="fecharModal('leadModalBackdrop')">Cancelar</button>
+      <button class="btn btn-gold" onclick="salvarLead()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: NOVO LEAD ══ -->
+<div class="modal-backdrop" id="novoLeadBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h2>Novo lead</h2><button class="modal-close" onclick="fecharModal('novoLeadBackdrop')">✕</button></div>
+    <div class="field-row">
+      <div class="field"><label>Nome / decisor</label><input id="nl-decisor"></div>
+      <div class="field"><label>Negócio</label><input id="nl-empresa"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Telefone</label><input id="nl-telefone"></div>
+      <div class="field"><label>E-mail</label><input id="nl-email"></div>
+    </div>
+    <div class="field"><label>Canal</label><input id="nl-canal" placeholder="Indicação, Instagram, Evento…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="fecharModal('novoLeadBackdrop')">Cancelar</button>
+      <button class="btn btn-gold" onclick="criarLead()">Criar lead</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO — troque os 2 valores abaixo pelo seu projeto Supabase
+// (Project Settings → API → Project URL / anon-public key). A anon
+// key É PRA FICAR PÚBLICA — a segurança real está na RLS das tabelas
+// (ver supabase/migrations/0006_rls.sql), nunca coloque a
+// service_role key aqui.
+// ════════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://pcvraalvtnmogirblvxq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_lgJRKGKsBfDWq8qyK1DRYw_oTTLU2pU';
+const WHATSAPP_NUM = '5534992280158'; // mesmo número do diagnostico.html — trocar antes de entregar ao cliente final
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── máquina de estágios do funil principal ──────────────────────
+const STAGES = [
+  { id: 'potencial',              nome: 'Potencial Prospecção' },
+  { id: 'ligar',                  nome: 'Ligar' },
+  { id: 'nao_atendeu',            nome: 'Não atendeu' },
+  { id: 'nova_ligacao',           nome: 'Nova Ligação Marcada' },
+  { id: 'follow_up',              nome: 'Follow-up' },
+  { id: 'multicanal',             nome: 'Tentar Multicanal' },
+  { id: 'reuniao_agendada',       nome: 'Reunião Agendada' },
+  { id: 'reuniao_realizada',      nome: 'Reunião Realizada' },
+  { id: 'aguardando_assinatura',  nome: 'Aguardando Assinatura' },
+  { id: 'fechado',                nome: 'Fechado' },
+];
+const STAGES_EXTRA = [
+  { id: 'reativacao', nome: 'Reativação' },
+  { id: 'desqualificado', nome: 'Desqualificado' },
+  { id: 'perdido', nome: 'Perdido' },
+];
+const TODOS_ESTAGIOS = STAGES.concat(STAGES_EXTRA);
+
+// mapeamento de possíveis nomes de coluna de planilha → campo do CRM
+const COL_ALIASES = {
+  empresa: ['empresa', 'negocio', 'negócio', 'nome fantasia', 'company'],
+  decisor: ['decisor', 'nome', 'contato', 'responsavel', 'responsável'],
+  telefone: ['telefone', 'whatsapp', 'celular', 'fone', 'phone', 'tel'],
+  segmento: ['segmento', 'ramo', 'setor', 'categoria'],
+  cidade: ['cidade', 'city', 'municipio', 'município'],
+  email: ['email', 'e-mail', 'mail'],
+  site: ['site', 'website', 'url'],
+};
+
+// ── estado global ────────────────────────────────────────────────
+const store = {
+  session: null,
+  leads: [],
+  atividades_crm: [],
+  anotacoes: [],
+  listas: [],
+  leads_lista: [],
+  leadAtual: null,
+  csvRows: null,
+  csvMapa: {},
+};
+
+// ── utils ─────────────────────────────────────────────────────────
+function toast(msg, isErr){
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast' + (isErr ? ' err' : '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3800);
+}
+function fmtData(d){
+  if(!d) return '—';
+  try{ return new Date(d).toLocaleDateString('pt-BR'); }catch(e){ return d; }
+}
+function fmtDinheiro(n){
+  if(n === null || n === undefined || n === '') return '—';
+  try{ return Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }catch(e){ return n; }
+}
+function diasDesde(dataStr){
+  if(!dataStr) return 0;
+  const d = new Date(dataStr + 'T00:00:00');
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  return Math.floor((hoje - d) / 86400000);
+}
+function nomeEstagio(id){
+  const s = TODOS_ESTAGIOS.find(s => s.id === id);
+  return s ? s.nome : id;
+}
+function abrirModal(id){ document.getElementById(id).classList.add('show'); }
+function fecharModal(id){ document.getElementById(id).classList.remove('show'); }
+function wppHref(tel){
+  const d = (tel||'').replace(/\D/g,'');
+  if(!d) return '#';
+  return 'https://wa.me/55' + d.replace(/^55/,'');
+}
+
+// ── aging automático: lead parado no mesmo estágio ganha badge ────
+function leadAging(lead){
+  if(!lead.estagio_desde) return null;
+  if(['fechado','perdido','desqualificado'].includes(lead.estagio)) return null;
+  const dias = diasDesde(lead.estagio_desde);
+  if(dias >= 7) return { txt: dias + 'd SEM MOVER', cls: 'badge-red' };
+  if(dias >= 3) return { txt: dias + 'd parado', cls: 'badge-amber' };
+  return null;
+}
+function _leadAtivBadge(leadId){
+  const pendentes = store.atividades_crm.filter(a => a.lead_id === leadId && a.status === 'pendente');
+  if(!pendentes.length) return null;
+  const hoje = new Date().toISOString().slice(0,10);
+  const atrasada = pendentes.some(a => a.data_prev <= hoje);
+  return { n: pendentes.length, atrasada };
+}
+
+// ════════════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════════════
+async function fazerLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  errEl.classList.remove('show');
+  if(!email || !pass){ errEl.textContent = 'Preencha e-mail e senha.'; errEl.classList.add('show'); return; }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if(error){ errEl.textContent = 'E-mail ou senha inválidos.'; errEl.classList.add('show'); return; }
+  store.session = data.session;
+  await iniciarApp();
+}
+async function fazerLogout(){
+  await db.auth.signOut();
+  location.reload();
+}
+
+// ════════════════════════════════════════════════════════════════
+// CAMADA DE DADOS
+// ════════════════════════════════════════════════════════════════
+async function carregarTudo(){
+  const [leadsRes, ativRes, notasRes, listasRes, leadsListaRes] = await Promise.all([
+    db.from('leads').select('*').order('criado_em', { ascending: false }),
+    db.from('atividades_crm').select('*').order('data_prev', { ascending: true }),
+    db.from('anotacoes').select('*').order('criado_em', { ascending: false }),
+    db.from('listas').select('*').order('criado_em', { ascending: false }),
+    db.from('leads_lista').select('*').order('criado_em', { ascending: false }),
+  ]);
+  store.leads = leadsRes.data || [];
+  store.atividades_crm = ativRes.data || [];
+  store.anotacoes = notasRes.data || [];
+  store.listas = listasRes.data || [];
+  store.leads_lista = leadsListaRes.data || [];
+}
+
+function popularSelectEstagios(){
+  const sels = [document.getElementById('leadsFiltroEstagio'), document.getElementById('ld-estagio')];
+  sels.forEach(sel => {
+    if(!sel) return;
+    const manterPrimeira = sel.id === 'leadsFiltroEstagio';
+    sel.innerHTML = manterPrimeira ? '<option value="">Todos os estágios</option>' : '';
+    STAGES.forEach(s => sel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.nome}</option>`));
+    const grp = document.createElement('optgroup'); grp.label = 'Outros funis';
+    sel.appendChild(grp);
+    STAGES_EXTRA.forEach(s => grp.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.nome}</option>`));
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// REALTIME — um único canal escutando várias tabelas ao mesmo tempo,
+// cada evento re-renderiza só a tela afetada (sem F5, sem polling).
+// ════════════════════════════════════════════════════════════════
+function iniciarRealtime(){
+  db.channel('via-permuta-painel')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, _rtLeads)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'atividades_crm' }, _rtAtiv)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'anotacoes' }, _rtNotas)
+    .subscribe();
+}
+function _upsertLocal(arr, row, key){
+  const i = arr.findIndex(x => x[key] === row[key]);
+  if(i >= 0) arr[i] = row; else arr.unshift(row);
+}
+function _rtLeads(payload){
+  if(payload.eventType === 'DELETE'){
+    store.leads = store.leads.filter(l => l.id !== payload.old.id);
+  } else {
+    _upsertLocal(store.leads, payload.new, 'id');
+  }
+  renderViewAtual();
+  atualizarDiagDot();
+}
+function _rtAtiv(payload){
+  if(payload.eventType === 'DELETE'){
+    store.atividades_crm = store.atividades_crm.filter(a => a.id !== payload.old.id);
+  } else {
+    _upsertLocal(store.atividades_crm, payload.new, 'id');
+  }
+  renderViewAtual();
+}
+function _rtNotas(payload){
+  if(payload.eventType === 'DELETE'){
+    store.anotacoes = store.anotacoes.filter(n => n.id !== payload.old.id);
+  } else {
+    _upsertLocal(store.anotacoes, payload.new, 'id');
+  }
+  if(store.leadAtual) renderLeadNotas();
+}
+function atualizarDiagDot(){
+  const emAndamento = store.leads.some(l => l.diagnostico_session_id && !l.diagnostico_completo &&
+    (Date.now() - new Date(l.atualizado_em || l.criado_em).getTime()) < 10 * 60 * 1000);
+  document.getElementById('diagDot').classList.toggle('show', emAndamento);
+}
+
+// ════════════════════════════════════════════════════════════════
+// ROTEADOR DE VIEWS
+// ════════════════════════════════════════════════════════════════
+let viewAtual = 'hoje';
+const VIEW_TITLES = { hoje: 'Hoje', pipeline: 'Pipeline', leads: 'Leads', diagnostico: 'Diagnóstico', listas: 'Listas', atividades: 'Atividades' };
+function switchView(v){
+  viewAtual = v;
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.toggle('active', el.dataset.view === v));
+  document.getElementById('tbTitle').textContent = VIEW_TITLES[v] || v;
+  document.getElementById('sidebar').classList.remove('open');
+  renderTbActions();
+  renderViewAtual();
+}
+function renderViewAtual(){
+  if(viewAtual === 'hoje') renderHoje();
+  else if(viewAtual === 'pipeline') renderPipeline();
+  else if(viewAtual === 'leads') renderLeads();
+  else if(viewAtual === 'diagnostico') renderDiagnostico();
+  else if(viewAtual === 'listas') renderListas();
+  else if(viewAtual === 'atividades') renderAtividades();
+}
+function renderTbActions(){
+  const el = document.getElementById('tbActions');
+  if(viewAtual === 'leads' || viewAtual === 'pipeline'){
+    el.innerHTML = `<button class="btn btn-gold" onclick="abrirNovoLead()">+ Novo lead</button>`;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// HOJE
+// ════════════════════════════════════════════════════════════════
+function renderHoje(){
+  const hoje = new Date().toISOString().slice(0,10);
+  const porEstagio = {};
+  store.leads.forEach(l => { porEstagio[l.estagio] = (porEstagio[l.estagio]||0) + 1; });
+  const ativHoje = store.atividades_crm.filter(a => a.status === 'pendente' && a.data_prev <= hoje);
+  const reunioesHoje = store.leads.filter(l => l.data_reuniao_marcada && String(l.data_reuniao_marcada).slice(0,10) === hoje).length;
+  const fechadosMes = store.leads.filter(l => l.estagio === 'fechado' && String(l.estagio_desde||'').slice(0,7) === hoje.slice(0,7)).length;
+
+  document.getElementById('hojeStats').innerHTML = `
+    <div class="stat-card"><div class="n">${store.leads.length}</div><div class="l">Leads no funil</div></div>
+    <div class="stat-card"><div class="n">${porEstagio.potencial||0}</div><div class="l">Potencial Prospecção</div></div>
+    <div class="stat-card"><div class="n">${ativHoje.length}</div><div class="l">Atividades pendentes hoje</div></div>
+    <div class="stat-card"><div class="n">${reunioesHoje}</div><div class="l">Reuniões marcadas hoje</div></div>
+    <div class="stat-card"><div class="n">${fechadosMes}</div><div class="l">Fechados este mês</div></div>
+  `;
+
+  const list = document.getElementById('hojeAtividades');
+  if(!ativHoje.length){ list.innerHTML = '<div class="empty-state">Nenhuma atividade pendente pra hoje. 🎉</div>'; return; }
+  list.innerHTML = ativHoje.map(a => {
+    const lead = store.leads.find(l => l.id === a.lead_id);
+    const atrasada = a.data_prev < hoje;
+    return `<div class="ativ-item ${atrasada?'late':''}">
+      <input type="checkbox" onchange="concluirAtividade('${a.id}')">
+      <div class="a-body"><strong>${lead ? lead.decisor||lead.empresa : 'Lead removido'}</strong> — ${a.obs||nomeAtividadeTipo(a.tipo)}</div>
+      <div class="a-date">${fmtData(a.data_prev)}</div>
+    </div>`;
+  }).join('');
+}
+function nomeAtividadeTipo(t){ return t === 'follow_up' ? 'Follow-up' : (t||'Atividade'); }
+
+// ════════════════════════════════════════════════════════════════
+// PIPELINE (kanban)
+// ════════════════════════════════════════════════════════════════
+let dragLeadId = null;
+function renderPipeline(){
+  const wrap = document.getElementById('kanbanWrap');
+  wrap.innerHTML = STAGES.map(s => {
+    const leadsDoEstagio = store.leads.filter(l => l.estagio === s.id).sort((a,b)=> (a.ordem||0)-(b.ordem||0));
+    return `<div class="kanban-col" data-estagio="${s.id}" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="onDropCard(event,'${s.id}')">
+      <div class="kc-head"><h3>${s.nome}</h3><span class="kc-count">${leadsDoEstagio.length}</span></div>
+      <div class="kc-body">${leadsDoEstagio.map(cardLeadHtml).join('') || ''}</div>
+    </div>`;
+  }).join('');
+}
+function cardLeadHtml(l){
+  const aging = leadAging(l);
+  const ativ = _leadAtivBadge(l.id);
+  return `<div class="lead-card" draggable="true" ondragstart="dragLeadId='${l.id}';this.classList.add('dragging')" ondragend="this.classList.remove('dragging')" onclick="abrirLead('${l.id}')">
+    <div class="lc-name">${l.decisor || l.empresa || 'Sem nome'}</div>
+    <div class="lc-meta">
+      ${l.faturamento_medio ? `<span>${l.faturamento_medio}</span>` : ''}
+      ${aging ? `<span class="badge ${aging.cls}">${aging.txt}</span>` : ''}
+      ${ativ ? `<span class="badge ${ativ.atrasada?'badge-red':'badge-amber'}">${ativ.n} ativ.</span>` : ''}
+    </div>
+  </div>`;
+}
+async function onDropCard(ev, novoEstagio){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('dragover');
+  const leadId = dragLeadId; dragLeadId = null;
+  if(!leadId) return;
+  const lead = store.leads.find(l => l.id === leadId);
+  if(!lead || lead.estagio === novoEstagio) return;
+  const estagioAnterior = lead.estagio;
+  lead.estagio = novoEstagio;
+  lead.estagio_desde = new Date().toISOString().slice(0,10);
+  renderPipeline();
+  const { error } = await db.from('leads').update({ estagio: novoEstagio, estagio_desde: lead.estagio_desde, atualizado_em: new Date().toISOString() }).eq('id', leadId);
+  if(error){ toast('Erro ao mover lead', true); return; }
+  await db.from('historico_lead').insert({ lead_id: leadId, estagio_anterior: estagioAnterior, estagio_novo: novoEstagio, tipo: 'estagio' });
+  await gerarAtividadesAuto(lead, novoEstagio);
+  toast(`${lead.decisor||lead.empresa} → ${nomeEstagio(novoEstagio)}`);
+}
+// único gatilho que gera atividade sozinha hoje: mover pra "Reunião Agendada"
+async function gerarAtividadesAuto(lead, novoEstagio){
+  if(novoEstagio !== 'reuniao_agendada') return;
+  const dataPrev = lead.data_reuniao_marcada ? String(lead.data_reuniao_marcada).slice(0,10) : new Date(Date.now()+86400000).toISOString().slice(0,10);
+  const { data, error } = await db.from('atividades_crm').insert({
+    lead_id: lead.id, tipo: 'follow_up', data_prev: dataPrev, obs: 'Confirmar Reunião Protagonista', auto: true, status: 'pendente',
+  }).select().single();
+  if(!error && data) store.atividades_crm.unshift(data);
+}
+
+// ════════════════════════════════════════════════════════════════
+// LEADS (tabela + CRUD)
+// ════════════════════════════════════════════════════════════════
+function renderLeads(){
+  const busca = (document.getElementById('leadsSearch').value||'').toLowerCase();
+  const filtroEstagio = document.getElementById('leadsFiltroEstagio').value;
+  let lista = store.leads.filter(l => {
+    if(filtroEstagio && l.estagio !== filtroEstagio) return false;
+    if(!busca) return true;
+    return [l.decisor,l.empresa,l.telefone,l.email].some(v => (v||'').toLowerCase().includes(busca));
+  });
+  const tbody = document.getElementById('leadsTbody');
+  if(!lista.length){ tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nenhum lead encontrado.</div></td></tr>`; return; }
+  tbody.innerHTML = lista.map(l => `
+    <tr onclick="abrirLead('${l.id}')">
+      <td><strong>${l.decisor || '—'}</strong></td>
+      <td>${l.empresa || '—'}</td>
+      <td>${l.telefone || '—'}</td>
+      <td><span class="badge badge-green">${nomeEstagio(l.estagio)}</span></td>
+      <td>${l.canal || '—'}</td>
+      <td>${fmtData(l.criado_em)}</td>
+    </tr>`).join('');
+}
+function abrirNovoLead(){
+  ['nl-decisor','nl-empresa','nl-telefone','nl-email','nl-canal'].forEach(id => document.getElementById(id).value = '');
+  abrirModal('novoLeadBackdrop');
+}
+async function criarLead(){
+  const decisor = document.getElementById('nl-decisor').value.trim();
+  const empresa = document.getElementById('nl-empresa').value.trim() || decisor;
+  if(!decisor){ toast('Informe ao menos o nome', true); return; }
+  const hoje = new Date().toISOString().slice(0,10);
+  const payload = {
+    decisor, empresa,
+    telefone: document.getElementById('nl-telefone').value.trim(),
+    email: document.getElementById('nl-email').value.trim() || null,
+    canal: document.getElementById('nl-canal').value.trim() || 'Manual',
+    tipo_lead: 'outbound', estagio: 'potencial', estagio_desde: hoje,
+  };
+  const { data, error } = await db.from('leads').insert(payload).select().single();
+  if(error){ toast('Erro ao criar lead: ' + error.message, true); return; }
+  store.leads.unshift(data);
+  fecharModal('novoLeadBackdrop');
+  renderViewAtual();
+  toast('Lead criado');
+}
+function abrirLead(id){
+  const l = store.leads.find(x => x.id === id);
+  if(!l) return;
+  store.leadAtual = l;
+  document.getElementById('leadModalTitle').textContent = l.decisor || l.empresa || 'Lead';
+  ['decisor','empresa','telefone','email','cidade','segmento','faturamento_medio','canal','valor_potencial','objetivo_credito','obs'].forEach(f => {
+    const el = document.getElementById('ld-' + f);
+    if(el) el.value = l[f] ?? '';
+  });
+  document.getElementById('ld-estagio').value = l.estagio || 'potencial';
+  trocarTab('dados');
+  renderLeadNotas();
+  renderLeadAtividades();
+  abrirModal('leadModalBackdrop');
+}
+function trocarTab(nome){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === nome));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + nome));
+}
+async function salvarLead(){
+  if(!store.leadAtual) return;
+  const id = store.leadAtual.id;
+  const payload = {};
+  ['decisor','empresa','telefone','email','cidade','segmento','faturamento_medio','canal','objetivo_credito','obs'].forEach(f => {
+    payload[f] = document.getElementById('ld-' + f).value.trim() || null;
+  });
+  const vp = document.getElementById('ld-valor_potencial').value;
+  payload.valor_potencial = vp ? Number(vp) : 0;
+  const novoEstagio = document.getElementById('ld-estagio').value;
+  if(novoEstagio !== store.leadAtual.estagio){
+    payload.estagio = novoEstagio;
+    payload.estagio_desde = new Date().toISOString().slice(0,10);
+  }
+  payload.atualizado_em = new Date().toISOString();
+  const { data, error } = await db.from('leads').update(payload).eq('id', id).select().single();
+  if(error){ toast('Erro ao salvar: ' + error.message, true); return; }
+  _upsertLocal(store.leads, data, 'id');
+  fecharModal('leadModalBackdrop');
+  renderViewAtual();
+  toast('Lead salvo');
+}
+async function excluirLeadAtual(){
+  if(!store.leadAtual) return;
+  if(!confirm('Excluir este lead permanentemente?')) return;
+  const id = store.leadAtual.id;
+  const { error } = await db.from('leads').delete().eq('id', id);
+  if(error){ toast('Erro ao excluir: ' + error.message, true); return; }
+  store.leads = store.leads.filter(l => l.id !== id);
+  fecharModal('leadModalBackdrop');
+  renderViewAtual();
+  toast('Lead excluído');
+}
+function renderLeadNotas(){
+  if(!store.leadAtual) return;
+  const notas = store.anotacoes.filter(n => n.lead_id === store.leadAtual.id);
+  const el = document.getElementById('leadNotasList');
+  el.innerHTML = notas.length ? notas.map(n => `<div class="note-item"><div class="n-meta">${fmtData(n.criado_em)}${n.autor_nome ? ' · '+n.autor_nome : ''}</div>${n.texto}</div>`).join('')
+    : '<div class="empty-state">Nenhuma nota ainda.</div>';
+}
+async function adicionarNota(){
+  if(!store.leadAtual) return;
+  const texto = document.getElementById('novaNota').value.trim();
+  if(!texto) return;
+  const autor = store.session?.user?.email || 'Equipe';
+  const { data, error } = await db.from('anotacoes').insert({ lead_id: store.leadAtual.id, texto, autor_nome: autor }).select().single();
+  if(error){ toast('Erro ao salvar nota', true); return; }
+  store.anotacoes.unshift(data);
+  document.getElementById('novaNota').value = '';
+  renderLeadNotas();
+}
+function renderLeadAtividades(){
+  if(!store.leadAtual) return;
+  const ativ = store.atividades_crm.filter(a => a.lead_id === store.leadAtual.id);
+  const el = document.getElementById('leadAtivList');
+  el.innerHTML = ativ.length ? ativ.map(a => `<div class="ativ-item ${a.status==='pendente'&&a.data_prev<new Date().toISOString().slice(0,10)?'late':''}">
+    <input type="checkbox" ${a.status==='concluida'?'checked':''} onchange="concluirAtividade('${a.id}')">
+    <div class="a-body">${a.obs || nomeAtividadeTipo(a.tipo)}</div>
+    <div class="a-date">${fmtData(a.data_prev)}</div>
+  </div>`).join('') : '<div class="empty-state">Nenhuma atividade agendada.</div>';
+}
+async function adicionarAtividade(){
+  if(!store.leadAtual) return;
+  const data_prev = document.getElementById('novaAtivData').value;
+  const obs = document.getElementById('novaAtivObs').value.trim();
+  if(!data_prev){ toast('Escolha uma data', true); return; }
+  const { data, error } = await db.from('atividades_crm').insert({ lead_id: store.leadAtual.id, tipo: 'follow_up', data_prev, obs, status: 'pendente' }).select().single();
+  if(error){ toast('Erro ao agendar atividade', true); return; }
+  store.atividades_crm.unshift(data);
+  document.getElementById('novaAtivData').value = '';
+  document.getElementById('novaAtivObs').value = '';
+  renderLeadAtividades();
+  toast('Atividade agendada');
+}
+async function concluirAtividade(id){
+  const a = store.atividades_crm.find(x => x.id === id);
+  if(!a) return;
+  const novoStatus = a.status === 'pendente' ? 'concluida' : 'pendente';
+  const { data, error } = await db.from('atividades_crm').update({ status: novoStatus }).eq('id', id).select().single();
+  if(error){ toast('Erro ao atualizar atividade', true); return; }
+  _upsertLocal(store.atividades_crm, data, 'id');
+  renderViewAtual();
+  if(store.leadAtual) renderLeadAtividades();
+}
+async function excluirAtividade(id){
+  const { error } = await db.from('atividades_crm').delete().eq('id', id);
+  if(error){ toast('Erro ao excluir atividade', true); return; }
+  store.atividades_crm = store.atividades_crm.filter(a => a.id !== id);
+  renderViewAtual();
+}
+
+// ════════════════════════════════════════════════════════════════
+// DIAGNÓSTICO — feed em tempo real de quem está preenchendo o
+// formulário público agora (ou preencheu recentemente)
+// ════════════════════════════════════════════════════════════════
+function renderDiagnostico(){
+  const comDiagnostico = store.leads.filter(l => l.diagnostico_session_id).sort((a,b) => new Date(b.atualizado_em||b.criado_em) - new Date(a.atualizado_em||a.criado_em));
+  const el = document.getElementById('diagFeed');
+  if(!comDiagnostico.length){ el.innerHTML = '<div class="empty-state">Ninguém preencheu o diagnóstico ainda.</div>'; return; }
+  el.innerHTML = comDiagnostico.map(l => {
+    const pct = l.diagnostico_completo ? 100 : Math.round(((l.diagnostico_etapa||0)/10)*100);
+    const recente = (Date.now() - new Date(l.atualizado_em||l.criado_em).getTime()) < 10*60*1000;
+    const dotCls = l.diagnostico_completo ? 'done' : (recente ? 'live' : '');
+    return `<div class="diag-item" onclick="abrirLead('${l.id}')" style="cursor:pointer">
+      <div class="diag-dot ${dotCls}"></div>
+      <div class="diag-body">
+        <div class="diag-name">${l.decisor || 'Sem nome ainda'}</div>
+        <div class="diag-sub">${l.diagnostico_completo ? 'Diagnóstico completo' : `Etapa ${(l.diagnostico_etapa||0)+1} de 11`} · ${fmtData(l.atualizado_em||l.criado_em)}</div>
+      </div>
+      <div class="diag-progress"><div class="diag-progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+// ATIVIDADES (tela dedicada)
+// ════════════════════════════════════════════════════════════════
+function renderAtividades(){
+  const hoje = new Date().toISOString().slice(0,10);
+  const pendentes = store.atividades_crm.filter(a => a.status === 'pendente').sort((a,b)=> (a.data_prev||'').localeCompare(b.data_prev||''));
+  const concluidas = store.atividades_crm.filter(a => a.status === 'concluida').slice(0,20);
+  const render = (a) => {
+    const lead = store.leads.find(l => l.id === a.lead_id);
+    return `<div class="ativ-item ${a.status==='pendente'&&a.data_prev<hoje?'late':''}">
+      <input type="checkbox" ${a.status==='concluida'?'checked':''} onchange="concluirAtividade('${a.id}')">
+      <div class="a-body"><strong>${lead ? (lead.decisor||lead.empresa) : 'Lead removido'}</strong> — ${a.obs||nomeAtividadeTipo(a.tipo)} ${a.auto?'<span class="badge badge-amber">auto</span>':''}</div>
+      <div class="a-date">${fmtData(a.data_prev)}</div>
+    </div>`;
+  };
+  document.getElementById('ativPendentes').innerHTML = pendentes.length ? pendentes.map(render).join('') : '<div class="empty-state">Nenhuma atividade pendente.</div>';
+  document.getElementById('ativConcluidas').innerHTML = concluidas.length ? concluidas.map(render).join('') : '<div class="empty-state">Nenhuma atividade concluída ainda.</div>';
+}
+
+// ════════════════════════════════════════════════════════════════
+// LISTAS — importação de CSV com mapeamento inteligente de colunas
+// ════════════════════════════════════════════════════════════════
+document.getElementById('dropzone').addEventListener('dragover', e => { e.preventDefault(); e.currentTarget.classList.add('drag'); });
+document.getElementById('dropzone').addEventListener('dragleave', e => e.currentTarget.classList.remove('drag'));
+document.getElementById('dropzone').addEventListener('drop', e => {
+  e.preventDefault(); e.currentTarget.classList.remove('drag');
+  if(e.dataTransfer.files[0]) lidarComCsv(e.dataTransfer.files[0]);
+});
+function parseCsv(texto){
+  const linhas = texto.split(/\r?\n/).filter(l => l.trim().length);
+  const sep = linhas[0].includes(';') && !linhas[0].includes(',') ? ';' : ',';
+  return linhas.map(l => l.split(sep).map(c => c.trim().replace(/^"|"$/g,'')));
+}
+function acharColuna(headers, aliases){
+  const idx = headers.findIndex(h => aliases.includes(h.toLowerCase().trim()));
+  return idx;
+}
+function lidarComCsv(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const linhas = parseCsv(reader.result);
+    if(linhas.length < 2){ toast('CSV vazio ou inválido', true); return; }
+    const headers = linhas[0];
+    const rows = linhas.slice(1);
+    const mapa = {};
+    Object.keys(COL_ALIASES).forEach(campo => {
+      const idx = acharColuna(headers, COL_ALIASES[campo]);
+      if(idx >= 0) mapa[campo] = idx;
+    });
+    store.csvRows = rows;
+    store.csvHeaders = headers;
+    store.csvMapa = mapa;
+    renderImportPreview();
+  };
+  reader.readAsText(file, 'utf-8');
+}
+function renderImportPreview(){
+  const el = document.getElementById('importPreview');
+  const campos = Object.keys(COL_ALIASES);
+  el.innerHTML = `
+    <h3 style="font-size:13px;color:var(--txt-dim);margin:18px 0 10px">Mapeamento de colunas (${store.csvRows.length} linhas encontradas)</h3>
+    ${campos.map(c => `<div class="import-map-row">
+      <label style="text-transform:capitalize">${c}</label>
+      <select onchange="store.csvMapa['${c}']=this.value===''?undefined:Number(this.value)">
+        <option value="">— não importar —</option>
+        ${store.csvHeaders.map((h,i) => `<option value="${i}" ${store.csvMapa[c]===i?'selected':''}>${h}</option>`).join('')}
+      </select>
+    </div>`).join('')}
+    <div class="field" style="margin-top:14px"><label>Nome da lista</label><input id="novaListaNome" placeholder="Ex: Prospecção Uberaba — Ago/2026"></div>
+    <button class="btn btn-gold" style="margin-top:10px" onclick="confirmarImportacao()">Importar ${store.csvRows.length} linhas</button>
+  `;
+}
+async function confirmarImportacao(){
+  const nome = document.getElementById('novaListaNome').value.trim() || ('Lista ' + new Date().toLocaleDateString('pt-BR'));
+  const { data: lista, error: listaErr } = await db.from('listas').insert({ nome, total_leads: store.csvRows.length, data_inicio: new Date().toISOString().slice(0,10) }).select().single();
+  if(listaErr){ toast('Erro ao criar lista: ' + listaErr.message, true); return; }
+  store.listas.unshift(lista);
+  const registros = store.csvRows.map(row => {
+    const rec = { lista_id: lista.id };
+    Object.keys(store.csvMapa).forEach(campo => {
+      const idx = store.csvMapa[campo];
+      if(idx !== undefined && idx !== null) rec[campo] = row[idx] || null;
+    });
+    return rec;
+  }).filter(r => r.decisor || r.empresa || r.telefone);
+  const { data: inseridos, error: insErr } = await db.from('leads_lista').insert(registros).select();
+  if(insErr){ toast('Erro ao importar linhas: ' + insErr.message, true); return; }
+  store.leads_lista = (inseridos||[]).concat(store.leads_lista);
+  document.getElementById('importPreview').innerHTML = '';
+  document.getElementById('csvInput').value = '';
+  store.csvRows = null;
+  renderListas();
+  toast(`${inseridos.length} leads importados pra "${nome}"`);
+}
+function renderListas(){
+  const el = document.getElementById('listasGrid');
+  if(!store.listas.length){ el.innerHTML = '<div class="empty-state">Nenhuma lista importada ainda.</div>'; return; }
+  el.innerHTML = store.listas.map(lst => {
+    const itens = store.leads_lista.filter(x => x.lista_id === lst.id);
+    const convertidos = itens.filter(x => x.status === 'convertido').length;
+    return `<div class="panel" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong style="color:var(--cream)">${lst.nome}</strong>
+        <span class="badge badge-green">${convertidos}/${itens.length} convertidos</span>
+      </div>
+      <div class="tbl-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Status</th><th></th></tr></thead><tbody>
+        ${itens.slice(0,50).map(it => `<tr>
+          <td>${it.decisor||it.empresa||'—'}</td><td>${it.telefone||'—'}</td>
+          <td><span class="badge ${it.status==='convertido'?'badge-green':'badge-amber'}">${it.status}</span></td>
+          <td>${it.status!=='convertido' ? `<button class="btn btn-ghost" style="padding:5px 10px;font-size:11.5px" onclick="converterListaItem('${it.id}')">→ Virar lead</button>` : ''}</td>
+        </tr>`).join('')}
+      </tbody></table></div>
+    </div>`;
+  }).join('');
+}
+async function converterListaItem(id){
+  const item = store.leads_lista.find(x => x.id === id);
+  if(!item) return;
+  const hoje = new Date().toISOString().slice(0,10);
+  const { data: lead, error } = await db.from('leads').insert({
+    decisor: item.decisor, empresa: item.empresa || item.decisor, telefone: item.telefone,
+    email: item.email, segmento: item.segmento, cidade: item.cidade, site_url: item.site,
+    canal: 'Lista de Prospecção', tipo_lead: 'outbound', estagio: 'potencial', estagio_desde: hoje,
+  }).select().single();
+  if(error){ toast('Erro ao converter: ' + error.message, true); return; }
+  store.leads.unshift(lead);
+  const { data: atualizado } = await db.from('leads_lista').update({ status: 'convertido', lead_id: lead.id }).eq('id', id).select().single();
+  if(atualizado) _upsertLocal(store.leads_lista, atualizado, 'id');
+  renderListas();
+  toast('Lead criado a partir da lista');
+}
+
+// ════════════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════════════
+async function iniciarApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').classList.add('ready');
+  document.getElementById('sbUserName').textContent = store.session?.user?.email || '';
+  popularSelectEstagios();
+  await carregarTudo();
+  iniciarRealtime();
+  atualizarDiagDot();
+  const hashLead = location.hash.match(/lead=([a-z0-9-]+)/i);
+  switchView('hoje');
+  if(hashLead) abrirLead(hashLead[1]);
+}
+(async function boot(){
+  const { data: { session } } = await db.auth.getSession();
+  if(session){ store.session = session; await iniciarApp(); }
+  db.auth.onAuthStateChange((event, session) => {
+    if(event === 'SIGNED_OUT') location.reload();
+  });
+})();
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key === 'Enter') fazerLogin(); });
+</script>
+</body>
+</html>

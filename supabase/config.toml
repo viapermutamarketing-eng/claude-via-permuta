@@ -1,0 +1,8 @@
+project_id = "pcvraalvtnmogirblvxq"
+
+# desliga a verificação de JWT pra esta function: ela é um endpoint público
+# (o formulário diagnostico-lead é preenchido por visitantes sem login).
+# Sem isso, o deploy automático via integração GitHub aplicaria o padrão
+# (JWT obrigatório) e todo POST do formulário voltaria 401.
+[functions.diagnostico-lead]
+verify_jwt = false
