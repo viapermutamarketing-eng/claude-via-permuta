@@ -31,8 +31,8 @@ body{background:var(--night);color:var(--txt);font-family:var(--sans);line-heigh
 /* topo fixo: logo + barra de progresso */
 .top-bar{position:sticky;top:0;z-index:20;background:rgba(23,13,14,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--border-2)}
 .top-inner{max-width:640px;margin:0 auto;padding:16px 24px 14px;display:flex;flex-direction:column;gap:12px}
-.top-row{display:flex;align-items:center;justify-content:space-between}
-.brand-mini{display:flex;align-items:center;gap:9px;text-decoration:none}
+.top-row{display:flex;align-items:center;justify-content:flex-end;position:relative;min-height:32px}
+.brand-mini{display:flex;align-items:center;gap:9px;text-decoration:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
 .brand-mini svg,.brand-mini img{height:24px;width:24px;flex-shrink:0;object-fit:contain;filter:drop-shadow(0 0 5px rgba(243,148,27,.6)) drop-shadow(0 0 2px rgba(243,148,27,.5))}
 .brand-mini span{font-family:var(--serif);font-weight:600;font-size:15.5px;color:var(--cream);letter-spacing:.01em}
 .back-btn{background:var(--card);border:1.5px solid var(--border-2);color:var(--txt);font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;padding:9px 16px 9px 12px;border-radius:30px;transition:border-color .15s,background .15s,transform .15s;visibility:hidden;opacity:0}
