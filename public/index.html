@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Painel · Via Permuta</title>
 <link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#170D0E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Via Permuta">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Nunito:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -92,9 +99,21 @@ input,select,textarea{font-family:inherit}
 .empty-state{text-align:center;padding:40px 20px;color:var(--txt-faint);font-size:13.5px}
 
 /* ── kanban ── */
-.kanban-wrap{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px}
-.kanban-col{flex:0 0 260px;background:var(--card);border:1px solid var(--border-2);border-radius:14px;display:flex;flex-direction:column;max-height:calc(100vh - 160px)}
+.kanban-wrap{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.kanban-col{flex:0 0 260px;background:var(--card);border:1px solid var(--border-2);border-radius:14px;display:flex;flex-direction:column;max-height:calc(100vh - 160px);scroll-snap-align:start}
 .kanban-col.dragover{border-color:var(--gold)}
+.stage-tabs{display:none;gap:8px;overflow-x:auto;padding-bottom:12px;-webkit-overflow-scrolling:touch}
+.stage-tabs::-webkit-scrollbar{display:none}
+.stage-tab{flex:0 0 auto;background:var(--card);border:1.5px solid var(--border-2);border-radius:20px;padding:9px 15px;font-size:12.5px;font-weight:800;color:var(--txt-dim);white-space:nowrap;display:flex;align-items:center;gap:7px;transition:border-color .15s,color .15s,background .15s}
+.stage-tab .stc{font-family:var(--mono);font-size:10.5px;background:var(--night-2);padding:1px 6px;border-radius:20px;color:var(--txt-faint)}
+.stage-tab.active{border-color:var(--gold);color:var(--cream);background:linear-gradient(135deg,rgba(176,141,79,.18),var(--card-2))}
+.stage-tab.active .stc{color:var(--gold-light)}
+@media(max-width:1200px){
+  .stage-tabs{display:flex}
+  .kanban-col{flex:0 0 84vw}
+  .kc-head{padding:16px 18px}
+  .lead-card{padding:14px 15px}
+}
 .kc-head{padding:14px 16px;border-bottom:1px solid var(--border-2);display:flex;justify-content:space-between;align-items:center}
 .kc-head h3{font-size:12.5px;font-weight:800;color:var(--txt);text-transform:uppercase;letter-spacing:.03em}
 .kc-count{font-family:var(--mono);font-size:11px;color:var(--txt-faint);background:var(--night-2);padding:2px 8px;border-radius:20px}
@@ -116,6 +135,15 @@ th{text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;let
 td{padding:12px 14px;border-bottom:1px solid var(--border-2);color:var(--txt);white-space:nowrap}
 tbody tr{cursor:pointer;transition:background .12s}
 tbody tr:hover{background:var(--card-2)}
+@media(max-width:680px){
+  /* tabela vira lista de cartões no celular — mais fácil de ler/tocar que rolar de lado */
+  .tbl-wrap table,.tbl-wrap thead,.tbl-wrap tbody,.tbl-wrap th,.tbl-wrap td,.tbl-wrap tr{display:block}
+  .tbl-wrap thead{display:none}
+  .tbl-wrap tr{background:var(--night-2);border:1px solid var(--border-2);border-radius:12px;padding:6px 14px;margin-bottom:10px;white-space:normal}
+  .tbl-wrap td{border-bottom:1px solid var(--border-2);padding:9px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;white-space:normal;text-align:right}
+  .tbl-wrap td:last-child{border-bottom:none}
+  .tbl-wrap td::before{content:attr(data-label);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--txt-faint);text-align:left}
+}
 .search-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
 .search-bar input,.search-bar select{background:var(--night-2);border:1.5px solid var(--border-2);border-radius:10px;padding:10px 14px;font-size:13.5px;color:var(--cream);outline:none}
 .search-bar input{flex:1;min-width:180px}
@@ -166,13 +194,18 @@ tbody tr:hover{background:var(--card-2)}
 .toast.err{border-color:rgba(228,104,91,.4);color:var(--red)}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-.hamburger{display:none;background:none;border:none;color:var(--txt);padding:6px}
+.hamburger{display:none;background:none;border:none;color:var(--txt);padding:8px;min-width:40px;min-height:40px}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(9,5,6,.6);z-index:39}
+.sidebar-backdrop.show{display:block}
 @media(max-width:900px){
-  .sidebar{transform:translateX(-100%)}
+  .sidebar{transform:translateX(-100%);transition:transform .22s ease}
   .sidebar.open{transform:translateX(0)}
   .main{margin-left:0}
   .hamburger{display:block}
   .field-row{grid-template-columns:1fr}
+  .sb-item{padding:12px 12px;font-size:14.5px}
+  .btn{padding:13px 18px;min-height:44px}
+  .tb-title{font-size:17px}
 }
 </style>
 </head>
@@ -227,11 +260,12 @@ tbody tr:hover{background:var(--card-2)}
       <button title="Sair" onclick="fazerLogout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
     </div>
   </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar(false)"></div>
 
   <div class="main">
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:12px">
-        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+        <button class="hamburger" onclick="toggleSidebar()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         <div class="tb-title" id="tbTitle">Hoje</div>
       </div>
       <div class="tb-actions" id="tbActions"></div>
@@ -248,6 +282,7 @@ tbody tr:hover{background:var(--card-2)}
 
     <!-- PIPELINE -->
     <div class="view" id="view-pipeline">
+      <div class="stage-tabs" id="stageTabs"></div>
       <div class="kanban-wrap" id="kanbanWrap"></div>
     </div>
 
@@ -598,13 +633,18 @@ function atualizarDiagDot(){
 // ════════════════════════════════════════════════════════════════
 let viewAtual = 'hoje';
 const VIEW_TITLES = { hoje: 'Hoje', pipeline: 'Pipeline', leads: 'Leads', diagnostico: 'Diagnóstico', listas: 'Listas', atividades: 'Atividades' };
+function toggleSidebar(force){
+  const open = force !== undefined ? force : !document.getElementById('sidebar').classList.contains('open');
+  document.getElementById('sidebar').classList.toggle('open', open);
+  document.getElementById('sidebarBackdrop').classList.toggle('show', open);
+}
 function switchView(v){
   viewAtual = v;
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.getElementById('view-' + v).classList.add('active');
   document.querySelectorAll('.sb-item').forEach(el => el.classList.toggle('active', el.dataset.view === v));
   document.getElementById('tbTitle').textContent = VIEW_TITLES[v] || v;
-  document.getElementById('sidebar').classList.remove('open');
+  toggleSidebar(false);
   renderTbActions();
   renderViewAtual();
 }
@@ -662,6 +702,7 @@ function nomeAtividadeTipo(t){ return t === 'follow_up' ? 'Follow-up' : (t||'Ati
 // PIPELINE (kanban)
 // ════════════════════════════════════════════════════════════════
 let dragLeadId = null;
+let pipelineObserver = null;
 function renderPipeline(){
   const wrap = document.getElementById('kanbanWrap');
   wrap.innerHTML = STAGES.map(s => {
@@ -671,6 +712,31 @@ function renderPipeline(){
       <div class="kc-body">${leadsDoEstagio.map(cardLeadHtml).join('') || ''}</div>
     </div>`;
   }).join('');
+
+  // abas de estágio (só aparecem em telas estreitas, via CSS) — tocar rola
+  // o carrossel até a coluna certa, com rolagem suave (scroll-snap)
+  const tabs = document.getElementById('stageTabs');
+  tabs.innerHTML = STAGES.map((s,i) => {
+    const n = store.leads.filter(l => l.estagio === s.id).length;
+    return `<button type="button" class="stage-tab${i===0?' active':''}" data-estagio="${s.id}" onclick="irParaEstagio('${s.id}')">${s.nome}<span class="stc">${n}</span></button>`;
+  }).join('');
+
+  // observa qual coluna está mais visível durante o swipe, pra manter a aba certa marcada
+  if(pipelineObserver) pipelineObserver.disconnect();
+  pipelineObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting && entry.intersectionRatio > 0.6){
+        const id = entry.target.dataset.estagio;
+        document.querySelectorAll('.stage-tab').forEach(t => t.classList.toggle('active', t.dataset.estagio === id));
+      }
+    });
+  }, { root: wrap, threshold: [0.6] });
+  wrap.querySelectorAll('.kanban-col').forEach(col => pipelineObserver.observe(col));
+}
+function irParaEstagio(id){
+  const col = document.querySelector(`.kanban-col[data-estagio="${id}"]`);
+  if(col) col.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+  document.querySelectorAll('.stage-tab').forEach(t => t.classList.toggle('active', t.dataset.estagio === id));
 }
 function cardLeadHtml(l){
   const aging = leadAging(l);
@@ -726,12 +792,12 @@ function renderLeads(){
   if(!lista.length){ tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nenhum lead encontrado.</div></td></tr>`; return; }
   tbody.innerHTML = lista.map(l => `
     <tr onclick="abrirLead('${l.id}')">
-      <td><strong>${l.decisor || '—'}</strong></td>
-      <td>${l.empresa || '—'}</td>
-      <td>${l.telefone || '—'}</td>
-      <td><span class="badge badge-green">${nomeEstagio(l.estagio)}</span></td>
-      <td>${l.canal || '—'}</td>
-      <td>${fmtData(l.criado_em)}</td>
+      <td data-label="Nome"><strong>${l.decisor || '—'}</strong></td>
+      <td data-label="Negócio">${l.empresa || '—'}</td>
+      <td data-label="Telefone">${l.telefone || '—'}</td>
+      <td data-label="Estágio"><span class="badge badge-green">${nomeEstagio(l.estagio)}</span></td>
+      <td data-label="Canal">${l.canal || '—'}</td>
+      <td data-label="Criado em">${fmtData(l.criado_em)}</td>
     </tr>`).join('');
 }
 function abrirNovoLead(){
@@ -998,9 +1064,9 @@ function renderListas(){
       </div>
       <div class="tbl-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Status</th><th></th></tr></thead><tbody>
         ${itens.slice(0,50).map(it => `<tr>
-          <td>${it.decisor||it.empresa||'—'}</td><td>${it.telefone||'—'}</td>
-          <td><span class="badge ${it.status==='convertido'?'badge-green':'badge-amber'}">${it.status}</span></td>
-          <td>${it.status!=='convertido' ? `<button class="btn btn-ghost" style="padding:5px 10px;font-size:11.5px" onclick="converterListaItem('${it.id}')">→ Virar lead</button>` : ''}</td>
+          <td data-label="Nome">${it.decisor||it.empresa||'—'}</td><td data-label="Telefone">${it.telefone||'—'}</td>
+          <td data-label="Status"><span class="badge ${it.status==='convertido'?'badge-green':'badge-amber'}">${it.status}</span></td>
+          <td data-label="">${it.status!=='convertido' ? `<button class="btn btn-ghost" style="padding:5px 10px;font-size:11.5px" onclick="converterListaItem('${it.id}')">→ Virar lead</button>` : ''}</td>
         </tr>`).join('')}
       </tbody></table></div>
     </div>`;
@@ -1046,6 +1112,11 @@ async function iniciarApp(){
   });
 })();
 document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key === 'Enter') fazerLogin(); });
+
+// PWA: registra o service worker (cache do app shell, funciona offline e permite "instalar" no celular)
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
 </script>
 </body>
 </html>
