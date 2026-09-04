@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Insights · Via Permuta</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#170D0E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Insights Via Permuta">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Nunito:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --gold:#B08D4F;--gold-light:#D9BD82;--gold-soft:#E7D6AC;--gold-deep:#7A5E30;
+  --ink:#0E0A08;--cream:#F7F0E4;--night:#170D0E;--night-2:#1D1113;--white:#FFFFFF;
+  --card:#211417;--card-2:#28181B;--border:rgba(247,240,228,.10);--border-2:rgba(247,240,228,.06);
+  --txt:#EFE6D8;--txt-dim:rgba(239,230,216,.7);--txt-faint:rgba(239,230,216,.5);
+  --green:#3FBF7F;--red:#E4685B;--amber:#E0A83F;--blue:#5B9FE4;--purple:#B98BE0;
+  --mono:'JetBrains Mono',monospace;--serif:'Fraunces',Georgia,serif;--sans:'Nunito',system-ui,sans-serif;
+  --sb-w:230px;--tb-h:60px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--night-2);color:var(--txt);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ── login (idêntico ao painel principal — mesma conta de equipe) ── */
+#loginScreen{position:fixed;inset:0;z-index:999;background:var(--night);display:flex;align-items:center;justify-content:center;padding:24px}
+.login-box{width:100%;max-width:380px;background:var(--card);border:1px solid var(--border-2);border-radius:20px;padding:38px 34px}
+.login-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:26px}
+.login-logo img{filter:drop-shadow(0 0 5px rgba(243,148,27,.6)) drop-shadow(0 0 2px rgba(243,148,27,.5))}
+.login-logo span{font-family:var(--serif);font-weight:600;font-size:19px;color:var(--cream)}
+.login-box h1{font-family:var(--serif);font-size:21px;font-weight:500;color:var(--cream);margin-bottom:6px;text-align:center}
+.login-box p{font-size:13px;color:var(--txt-faint);text-align:center;margin-bottom:26px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11.5px;font-weight:700;color:var(--txt-dim);margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em}
+.field input,.field select,.field textarea{width:100%;background:var(--night-2);border:1.5px solid var(--border-2);border-radius:10px;padding:12px 14px;font-size:14.5px;color:var(--cream);outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--gold)}
+.btn{border:none;border-radius:10px;padding:12px 18px;font-weight:800;font-size:14px;cursor:pointer;transition:transform .12s,box-shadow .15s,background .15s;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn-gold{background:var(--gold);color:var(--ink)}
+.btn-gold:hover{background:var(--gold-light);box-shadow:0 8px 22px rgba(176,141,79,.3)}
+.btn-ghost{background:var(--card-2);color:var(--txt);border:1.5px solid var(--border-2)}
+.btn-ghost:hover{border-color:rgba(176,141,79,.45)}
+.btn-block{width:100%}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.5;cursor:default;transform:none!important}
+.login-err{color:var(--red);font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;display:none}
+.login-err.show{display:block}
+
+/* ── shell (mesmo padrão do painel principal) ── */
+#app{display:none}
+#app.ready{display:block}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sb-w);background:var(--night);border-right:1px solid var(--border-2);display:flex;flex-direction:column;z-index:40;transition:transform .2s}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:20px 20px 18px;border-bottom:1px solid var(--border-2)}
+.sb-brand img{filter:drop-shadow(0 0 5px rgba(243,148,27,.6)) drop-shadow(0 0 2px rgba(243,148,27,.5))}
+.sb-brand span{font-family:var(--serif);font-weight:600;font-size:16px;color:var(--cream)}
+.sb-nav{flex:1;overflow-y:auto;padding:14px 12px}
+.sb-group-label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-faint);padding:14px 10px 6px}
+.sb-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:700;color:var(--txt-dim);cursor:pointer;transition:background .15s,color .15s;position:relative}
+.sb-item:hover{background:var(--card);color:var(--txt)}
+.sb-item.active{background:linear-gradient(135deg,rgba(176,141,79,.18),transparent);color:var(--cream)}
+.sb-item.active::before{content:'';position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--gold)}
+.sb-item svg{width:17px;height:17px;stroke:currentColor;stroke-width:2;fill:none;flex-shrink:0}
+.sb-item.voltar{margin-top:6px;color:var(--txt-faint)}
+.sb-user{border-top:1px solid var(--border-2);padding:14px 18px;display:flex;align-items:center;gap:10px}
+.sb-user-name{font-size:12.5px;font-weight:700;color:var(--txt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-user button{background:none;border:none;color:var(--txt-faint);padding:4px}
+.sb-user button:hover{color:var(--red)}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:39}
+.sidebar-backdrop.show{display:block}
+.hamburger{display:none;background:none;border:none;color:var(--txt);padding:4px}
+.hamburger svg{width:22px;height:22px}
+
+.main{margin-left:var(--sb-w);min-height:100vh}
+.topbar{height:var(--tb-h);border-bottom:1px solid var(--border-2);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;background:rgba(29,17,19,.85);backdrop-filter:blur(10px);z-index:30;gap:14px;flex-wrap:wrap}
+.tb-title{font-family:var(--serif);font-size:19px;font-weight:500;color:var(--cream)}
+.tb-sub{font-size:11.5px;color:var(--txt-faint);font-family:var(--mono)}
+.tb-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.view{padding:28px;display:none}
+.view.active{display:block;animation:fadeIn .25s ease both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .hamburger{display:block}
+  .view{padding:18px}
+}
+
+/* ── toggle orgânico/pago/combinado ── */
+.origem-toggle{display:flex;background:var(--card-2);border:1px solid var(--border-2);border-radius:20px;padding:3px;gap:2px}
+.origem-toggle button{background:none;border:none;color:var(--txt-faint);font-size:12px;font-weight:800;padding:7px 14px;border-radius:18px;transition:.15s}
+.origem-toggle button.active{background:var(--gold);color:var(--ink)}
+
+/* ── leaderboard / gamificação ── */
+.podio{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:26px}
+.perfil-card{background:var(--card);border:1px solid var(--border-2);border-radius:18px;padding:20px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}
+.perfil-card:hover{transform:translateY(-3px);border-color:rgba(176,141,79,.4)}
+.perfil-card.top1{border-color:var(--gold);background:linear-gradient(160deg,rgba(176,141,79,.16),var(--card) 60%);box-shadow:0 0 0 1px rgba(176,141,79,.25),0 18px 40px -12px rgba(176,141,79,.35)}
+.perfil-card.top1::after{content:'';position:absolute;top:-40%;right:-30%;width:70%;height:70%;background:radial-gradient(circle,rgba(217,189,130,.35),transparent 70%);pointer-events:none;animation:glowPulse 2.6s ease-in-out infinite}
+@keyframes glowPulse{0%,100%{opacity:.55}50%{opacity:1}}
+.pc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.pc-pos{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--txt-faint);letter-spacing:.05em}
+.pc-crown{font-size:20px;filter:drop-shadow(0 0 6px rgba(217,189,130,.8))}
+.pc-nome{font-family:var(--serif);font-size:17px;font-weight:600;color:var(--cream);margin-bottom:2px}
+.pc-tipo{font-size:11px;color:var(--txt-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.pc-score{font-family:var(--serif);font-size:34px;font-weight:700;color:var(--gold-light);margin:10px 0 4px;font-variant-numeric:tabular-nums}
+.pc-score-lbl{font-size:10.5px;color:var(--txt-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.pc-crit{display:flex;flex-direction:column;gap:6px}
+.pc-crit-row{display:flex;align-items:center;gap:8px;font-size:11px}
+.pc-crit-nome{width:74px;color:var(--txt-faint);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc-crit-bar{flex:1;height:6px;background:var(--night-2);border-radius:99px;overflow:hidden}
+.pc-crit-fill{height:100%;background:linear-gradient(90deg,var(--gold-deep),var(--gold-light));border-radius:99px;transition:width .6s ease}
+.pc-badges{display:flex;gap:4px;margin-top:12px;flex-wrap:wrap}
+.pc-badge{font-size:15px;filter:drop-shadow(0 0 3px rgba(0,0,0,.4))}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border-2);border-radius:14px;padding:18px 20px}
+.stat-card .n{font-family:var(--serif);font-size:28px;font-weight:600;color:var(--cream);font-variant-numeric:tabular-nums}
+.stat-card .l{font-size:12px;color:var(--txt-faint);margin-top:4px;font-weight:600}
+.panel{background:var(--card);border:1px solid var(--border-2);border-radius:16px;padding:22px;margin-bottom:20px}
+.panel h2{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--cream);margin-bottom:16px}
+.empty-state{text-align:center;padding:40px 20px;color:var(--txt-faint);font-size:13.5px}
+
+/* ── perfis (grid + drilldown) ── */
+.perfis-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.post-card{display:flex;gap:12px;background:var(--night-2);border:1px solid var(--border-2);border-radius:12px;padding:12px;margin-bottom:10px;align-items:center}
+.post-thumb{width:52px;height:52px;border-radius:9px;object-fit:cover;background:var(--card-2);flex-shrink:0}
+.post-info{flex:1;min-width:0}
+.post-info .cap{font-size:12.5px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.post-info .meta{font-size:11px;color:var(--txt-faint);margin-top:2px}
+.post-metric{font-family:var(--serif);font-size:16px;color:var(--gold-light);text-align:right;flex-shrink:0}
+.tipo-chip{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(91,159,228,.16);color:var(--blue);text-transform:uppercase}
+.origem-chip{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:5px}
+.origem-chip.organico{background:rgba(63,191,127,.16);color:var(--green)}
+.origem-chip.impulsionado{background:rgba(185,139,224,.16);color:var(--purple)}
+
+/* ── formulário direct ── */
+.direct-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.direct-card{background:var(--night-2);border:1px solid var(--border-2);border-radius:14px;padding:16px}
+.direct-card h3{font-family:var(--serif);font-size:15px;color:var(--cream);margin-bottom:12px;font-weight:600}
+.direct-row{display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin-bottom:9px}
+.direct-row label{font-size:12px;color:var(--txt-dim)}
+.direct-row input{background:var(--card);border:1.5px solid var(--border-2);border-radius:8px;padding:8px 10px;color:var(--cream);font-size:13px;text-align:right}
+.direct-row input:focus{outline:none;border-color:var(--gold)}
+
+/* ── critérios ── */
+.crit-row{display:grid;grid-template-columns:1fr 120px 70px 90px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-2)}
+.crit-row:last-child{border-bottom:none}
+.crit-row input[type=range]{width:100%;accent-color:var(--gold)}
+.crit-row .peso-n{font-family:var(--mono);font-size:13px;text-align:center;color:var(--gold-light)}
+
+/* ── modal ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border-2);border-radius:18px;padding:26px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.modal-head h2{font-family:var(--serif);font-size:19px;color:var(--cream);font-weight:600}
+.modal-close{background:none;border:none;color:var(--txt-faint);font-size:20px;padding:2px 6px}
+
+/* ── toast ── */
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--card);border:1px solid var(--border-2);border-left:3px solid var(--gold);border-radius:10px;padding:12px 16px;font-size:13px;font-weight:700;color:var(--cream);box-shadow:0 10px 30px rgba(0,0,0,.4);animation:toastIn .2s ease}
+.toast.err{border-left-color:var(--red)}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,.25);border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="assets/logo-icon.png" alt="" width="28" height="28">
+      <span>Via Permuta</span>
+    </div>
+    <h1>Plataforma de Insights</h1>
+    <p>Ranking, performance orgânica e paga do time — entre com sua conta</p>
+    <div class="field"><label>E-mail</label><input type="email" id="loginEmail" autocomplete="username" placeholder="voce@viapermuta.com.br"></div>
+    <div class="field"><label>Senha</label><input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••"></div>
+    <button class="btn btn-gold btn-block" id="loginBtn" onclick="fazerLogin()">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <img src="assets/logo-icon.png" alt="" width="24" height="24">
+      <span>Insights</span>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-group-label">Plataforma</div>
+      <div class="sb-item" data-view="ranking" onclick="switchView('ranking')">
+        <svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.6L22 9.3l-5.3 4.6L18.2 21 12 17.1 5.8 21l1.5-7.1L2 9.3l7.4-.7z"/></svg>Ranking
+      </div>
+      <div class="sb-item" data-view="perfis" onclick="switchView('perfis')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Perfis
+      </div>
+      <div class="sb-item" data-view="direct" onclick="switchView('direct')">
+        <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>Direct
+      </div>
+      <div class="sb-item" data-view="criterios" onclick="switchView('criterios')">
+        <svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Critérios
+      </div>
+      <a class="sb-item voltar" href="index.html">
+        <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Voltar ao CRM
+      </a>
+    </nav>
+    <div class="sb-user">
+      <div class="sb-user-name" id="sbUserName">—</div>
+      <button title="Sair" onclick="fazerLogout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar(false)"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="hamburger" onclick="toggleSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+        <div>
+          <div class="tb-title" id="tbTitle">Ranking</div>
+          <div class="tb-sub" id="tbSub">—</div>
+        </div>
+      </div>
+      <div class="tb-actions" id="tbActions">
+        <div class="origem-toggle" id="origemToggle">
+          <button data-origem="combinado" class="active" onclick="setOrigem('combinado')">Combinado</button>
+          <button data-origem="organico" onclick="setOrigem('organico')">Orgânico</button>
+          <button data-origem="impulsionado" onclick="setOrigem('impulsionado')">Pago</button>
+        </div>
+        <button class="btn btn-gold" id="btnAtualizar" onclick="atualizarAgora()">↻ Atualizar agora</button>
+      </div>
+    </div>
+
+    <!-- RANKING -->
+    <div class="view" id="view-ranking">
+      <div class="stat-grid" id="rankingStats"></div>
+      <div class="podio" id="podio"></div>
+    </div>
+
+    <!-- PERFIS -->
+    <div class="view" id="view-perfis">
+      <div class="perfis-grid" id="perfisGrid"></div>
+    </div>
+
+    <!-- DIRECT -->
+    <div class="view" id="view-direct">
+      <div class="panel">
+        <h2>Movimento do Direct hoje</h2>
+        <p style="font-size:12.5px;color:var(--txt-faint);margin-bottom:16px">
+          A Meta não expõe métricas de conversa de terceiros pela API — preencha aqui uma vez por dia.
+          Isso alimenta o critério "Direct: tempo de resposta" do ranking.
+        </p>
+        <div class="direct-grid" id="directGrid"></div>
+      </div>
+    </div>
+
+    <!-- CRITÉRIOS -->
+    <div class="view" id="view-criterios">
+      <div class="panel">
+        <h2>Pesos do ranking</h2>
+        <p style="font-size:12.5px;color:var(--txt-faint);margin-bottom:10px">
+          Ajuste o peso de cada critério (soma não precisa fechar em 100 — a Edge Function normaliza
+          automaticamente). Vale a partir da próxima execução do ranking.
+        </p>
+        <div id="criteriosList"></div>
+        <button class="btn btn-gold" style="margin-top:16px" onclick="salvarCriterios()">Salvar pesos</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- modal drill-down de perfil -->
+<div class="modal-bg" id="modalPerfil" onclick="if(event.target===this) fecharModal('modalPerfil')">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="mpNome">Perfil</h2>
+      <button class="modal-close" onclick="fecharModal('modalPerfil')">✕</button>
+    </div>
+    <div id="mpConteudo"></div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// CONFIG — mesmo projeto Supabase do CRM (public/index.html): a
+// Plataforma de Insights reaproveita login, banco e Realtime.
+// ════════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://pcvraalvtnmogirblvxq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_lgJRKGKsBfDWq8qyK1DRYw_oTTLU2pU';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const store = {
+  session: null,
+  contas: [],
+  execucaoAtual: null,
+  rankingPerfis: [],
+  rankingPublicacoes: [],
+  conquistas: [],
+  conquistasPorConta: {},
+  publicacoesPorConta: {},   // conta_id -> [{...publicacao, metricas:[...], pagas:[...]}]
+  criterios: [],
+  origemFiltro: 'combinado', // combinado | organico | impulsionado
+};
+
+function toast(msg, isErr){
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast' + (isErr ? ' err' : '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3800);
+}
+function abrirModal(id){ document.getElementById(id).classList.add('show'); }
+function fecharModal(id){ document.getElementById(id).classList.remove('show'); }
+function fmtN(n){
+  if(n === null || n === undefined) return '—';
+  n = Number(n);
+  if(Math.abs(n) >= 1000000) return (n/1000000).toFixed(1).replace('.0','') + 'M';
+  if(Math.abs(n) >= 1000) return (n/1000).toFixed(1).replace('.0','') + 'k';
+  return Math.round(n).toLocaleString('pt-BR');
+}
+function fmtQuando(iso){
+  if(!iso) return 'nunca sincronizado';
+  const d = new Date(iso);
+  return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+// count-up simples pra dar aquele efeito "dopaminérgico" nos números
+function countUp(el, to, ms=700){
+  const from = 0;
+  const t0 = performance.now();
+  function step(t){
+    const p = Math.min(1, (t - t0) / ms);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmtN(from + (to - from) * eased);
+    if(p < 1) requestAnimationFrame(step);
+    else el.textContent = fmtN(to);
+  }
+  requestAnimationFrame(step);
+}
+
+// ════════════════════════════════════════════════════════════════
+// AUTH (mesmo padrão do painel principal)
+// ════════════════════════════════════════════════════════════════
+async function fazerLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  errEl.classList.remove('show');
+  if(!email || !pass){ errEl.textContent = 'Preencha e-mail e senha.'; errEl.classList.add('show'); return; }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if(error){ errEl.textContent = 'E-mail ou senha inválidos.'; errEl.classList.add('show'); return; }
+  store.session = data.session;
+  await iniciarApp();
+}
+async function fazerLogout(){
+  await db.auth.signOut();
+  location.reload();
+}
+
+// ════════════════════════════════════════════════════════════════
+// CAMADA DE DADOS
+// ════════════════════════════════════════════════════════════════
+async function carregarTudo(){
+  const [contasRes, criteriosRes, ultimaExecRes] = await Promise.all([
+    db.from('contas_sociais').select('*').eq('ativo', true).order('ordem', { ascending: true }),
+    db.from('criterios_ranking').select('*').order('peso', { ascending: false }),
+    db.from('ranking_execucoes').select('*').eq('status', 'concluido').order('criado_em', { ascending: false }).limit(1),
+  ]);
+  store.contas = contasRes.data || [];
+  store.criterios = criteriosRes.data || [];
+  store.execucaoAtual = (ultimaExecRes.data || [])[0] || null;
+
+  if(store.execucaoAtual){
+    const [perfisRes, pubsRes, conquistasContaRes] = await Promise.all([
+      db.from('ranking_perfis').select('*').eq('execucao_id', store.execucaoAtual.id).order('posicao', { ascending: true }),
+      db.from('ranking_publicacoes').select('*, publicacoes(*)').eq('execucao_id', store.execucaoAtual.id),
+      db.from('conquistas_perfil').select('*, conquistas(*)').order('conquistado_em', { ascending: false }).limit(200),
+    ]);
+    store.rankingPerfis = perfisRes.data || [];
+    store.rankingPublicacoes = pubsRes.data || [];
+    store.conquistasPorConta = {};
+    for(const c of (conquistasContaRes.data || [])){
+      (store.conquistasPorConta[c.conta_id] ||= []).push(c);
+    }
+  } else {
+    store.rankingPerfis = [];
+    store.rankingPublicacoes = [];
+    store.conquistasPorConta = {};
+  }
+
+  // publicações + métricas recentes por conta (pra tela Perfis)
+  const porConta = {};
+  for(const conta of store.contas){
+    const { data: pubs } = await db.from('publicacoes').select('*').eq('conta_id', conta.id).order('publicado_em', { ascending: false }).limit(12);
+    const ids = (pubs || []).map(p => p.id);
+    let metricas = [], pagas = [];
+    if(ids.length){
+      const [mRes, pRes] = await Promise.all([
+        db.from('metricas_publicacao').select('*').in('publicacao_id', ids).order('capturado_em', { ascending: false }),
+        db.from('metricas_publicacao_paga').select('*').in('publicacao_id', ids).order('capturado_em', { ascending: false }),
+      ]);
+      metricas = mRes.data || [];
+      pagas = pRes.data || [];
+    }
+    porConta[conta.id] = (pubs || []).map(p => ({
+      ...p,
+      metrica: metricas.find(m => m.publicacao_id === p.id) || null,
+      paga: pagas.find(pg => pg.publicacao_id === p.id) || null,
+    }));
+  }
+  store.publicacoesPorConta = porConta;
+}
+
+async function carregarDirect(){
+  const hoje = new Date().toISOString().slice(0,10);
+  const { data } = await db.from('metricas_manuais').select('*').eq('data_referencia', hoje);
+  return data || [];
+}
+
+// ════════════════════════════════════════════════════════════════
+// AÇÃO: atualizar ranking agora (chama a Edge Function)
+// ════════════════════════════════════════════════════════════════
+async function atualizarAgora(){
+  const btn = document.getElementById('btnAtualizar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Sincronizando…';
+  try{
+    const { data: { session } } = await db.auth.getSession();
+    const res = await fetch(SUPABASE_URL + '/functions/v1/sync-meta-insights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+      body: JSON.stringify({ tipo: 'manual' }),
+    });
+    const out = await res.json();
+    if(!res.ok) throw new Error(out.error || 'falha na sincronização');
+    toast('Ranking atualizado com sucesso!');
+    await carregarTudo();
+    renderViewAtual();
+  }catch(e){
+    toast('Erro ao atualizar: ' + e.message, true);
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = '↻ Atualizar agora';
+  }
+}
+
+function setOrigem(o){
+  store.origemFiltro = o;
+  document.querySelectorAll('#origemToggle button').forEach(b => b.classList.toggle('active', b.dataset.origem === o));
+  renderViewAtual();
+}
+
+// ════════════════════════════════════════════════════════════════
+// RENDER — RANKING (leaderboard gamificado)
+// ════════════════════════════════════════════════════════════════
+function renderRanking(){
+  document.getElementById('tbSub').textContent = store.execucaoAtual
+    ? `Última execução: ${fmtQuando(store.execucaoAtual.criado_em)} (${store.execucaoAtual.tipo})`
+    : 'Nenhuma execução ainda — clique em "Atualizar agora"';
+
+  const totalViews = store.rankingPerfis.reduce((s, p) => s + (p.detalhamento?.views?.valor || 0), 0);
+  const totalSeguidores = store.rankingPerfis.reduce((s, p) => s + (p.detalhamento?.seguidores?.valor || 0), 0);
+  const statsEl = document.getElementById('rankingStats');
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="n">${store.contas.length}</div><div class="l">Contas monitoradas</div></div>
+    <div class="stat-card"><div class="n">${fmtN(totalViews)}</div><div class="l">Views no período</div></div>
+    <div class="stat-card"><div class="n">${fmtN(totalSeguidores)}</div><div class="l">Seguidores ganhos</div></div>
+    <div class="stat-card"><div class="n">${store.execucaoAtual ? store.execucaoAtual.tipo : '—'}</div><div class="l">Tipo da última execução</div></div>
+  `;
+
+  const podio = document.getElementById('podio');
+  if(!store.rankingPerfis.length){
+    podio.innerHTML = '<div class="empty-state">Ainda não rodou nenhuma sincronização. Clique em "Atualizar agora" pra puxar os insights do Meta.</div>';
+    return;
+  }
+  podio.innerHTML = store.rankingPerfis.map(rp => {
+    const conta = store.contas.find(c => c.id === rp.conta_id);
+    if(!conta) return '';
+    const badges = (store.conquistasPorConta[rp.conta_id] || []).slice(0,5)
+      .map(cp => `<span class="pc-badge" title="${cp.conquistas?.nome || ''}">${cp.conquistas?.icone || '🏅'}</span>`).join('');
+    const critRows = Object.entries(rp.detalhamento || {}).map(([chave, d]) => {
+      const crit = store.criterios.find(c => c.chave === chave);
+      return `<div class="pc-crit-row">
+        <span class="pc-crit-nome">${crit?.nome || chave}</span>
+        <span class="pc-crit-bar"><span class="pc-crit-fill" style="width:${d.normalizado || 0}%"></span></span>
+      </div>`;
+    }).join('');
+    return `
+    <div class="perfil-card ${rp.posicao === 1 ? 'top1' : ''}" onclick="abrirPerfilModal('${conta.id}')">
+      <div class="pc-top">
+        <div>
+          <div class="pc-pos">#${rp.posicao}</div>
+          <div class="pc-nome">${conta.nome}</div>
+          <div class="pc-tipo">${conta.tipo}</div>
+        </div>
+        ${rp.posicao === 1 ? '<span class="pc-crown">👑</span>' : ''}
+      </div>
+      <div class="pc-score" data-score="${rp.pontuacao_total}">0</div>
+      <div class="pc-score-lbl">pontos</div>
+      <div class="pc-crit">${critRows}</div>
+      <div class="pc-badges">${badges}</div>
+    </div>`;
+  }).join('');
+  // efeito count-up nos scores recém-renderizados
+  document.querySelectorAll('.pc-score').forEach(el => countUp(el, Number(el.dataset.score)));
+}
+
+// ════════════════════════════════════════════════════════════════
+// RENDER — PERFIS (grid + drill-down por publicação)
+// ════════════════════════════════════════════════════════════════
+function filtrarPorOrigem(pubs){
+  if(store.origemFiltro === 'combinado') return pubs;
+  return pubs.filter(p => p.origem === store.origemFiltro || (store.origemFiltro === 'organico' && p.origem !== 'impulsionado'));
+}
+
+function renderPerfis(){
+  const grid = document.getElementById('perfisGrid');
+  if(!store.contas.length){ grid.innerHTML = '<div class="empty-state">Nenhuma conta cadastrada.</div>'; return; }
+  grid.innerHTML = store.contas.map(conta => {
+    const pubs = filtrarPorOrigem(store.publicacoesPorConta[conta.id] || []);
+    const top = [...pubs].sort((a,b) => (b.metrica?.visualizacoes||0) - (a.metrica?.visualizacoes||0))[0];
+    return `
+    <div class="panel" style="cursor:pointer" onclick="abrirPerfilModal('${conta.id}')">
+      <h2>${conta.nome}</h2>
+      ${top ? `
+        <div class="post-card">
+          <img class="post-thumb" src="${top.thumbnail_url || ''}" onerror="this.style.opacity=0">
+          <div class="post-info">
+            <div class="cap">${(top.legenda || 'Sem legenda').slice(0,40)}</div>
+            <div class="meta"><span class="tipo-chip">${top.tipo}</span><span class="origem-chip ${top.origem === 'impulsionado' ? 'impulsionado' : 'organico'}">${top.origem === 'impulsionado' ? 'pago' : 'orgânico'}</span></div>
+          </div>
+          <div class="post-metric">${fmtN(top.metrica?.visualizacoes)}<div style="font-size:9.5px;color:var(--txt-faint);font-weight:700">views</div></div>
+        </div>
+      ` : '<div class="empty-state" style="padding:16px 0">Sem publicações sincronizadas ainda</div>'}
+    </div>`;
+  }).join('');
+}
+
+function abrirPerfilModal(contaId){
+  const conta = store.contas.find(c => c.id === contaId);
+  if(!conta) return;
+  document.getElementById('mpNome').textContent = conta.nome;
+  const pubs = filtrarPorOrigem(store.publicacoesPorConta[contaId] || [])
+    .sort((a,b) => (b.metrica?.visualizacoes||0) - (a.metrica?.visualizacoes||0));
+  const conquistasEl = (store.conquistasPorConta[contaId] || []).slice(0,6)
+    .map(cp => `<span class="pc-badge" title="${cp.conquistas?.nome||''}">${cp.conquistas?.icone||'🏅'}</span>`).join(' ');
+  document.getElementById('mpConteudo').innerHTML = `
+    <div style="margin-bottom:14px">${conquistasEl || '<span style="color:var(--txt-faint);font-size:12.5px">Sem conquistas ainda</span>'}</div>
+    ${pubs.length ? pubs.map(p => `
+      <div class="post-card">
+        <img class="post-thumb" src="${p.thumbnail_url || ''}" onerror="this.style.opacity=0">
+        <div class="post-info">
+          <div class="cap">${(p.legenda || 'Sem legenda').slice(0,48)}</div>
+          <div class="meta">
+            <span class="tipo-chip">${p.tipo}</span>
+            <span class="origem-chip ${p.origem === 'impulsionado' ? 'impulsionado' : 'organico'}">${p.origem === 'impulsionado' ? 'pago' : 'orgânico'}</span>
+          </div>
+          <div class="meta" style="margin-top:4px">
+            👁 ${fmtN(p.metrica?.visualizacoes)} · ❤️ ${fmtN(p.metrica?.curtidas)} · ✈️ ${fmtN(p.metrica?.envios)} · 🔖 ${fmtN(p.metrica?.salvamentos)}
+            ${p.metrica?.seguidores_ganhos ? ` · 👤+${fmtN(p.metrica.seguidores_ganhos)}` : ''}
+          </div>
+          ${p.paga ? `<div class="meta" style="margin-top:2px;color:var(--purple)">💰 R$ ${Number(p.paga.gasto||0).toFixed(2)} investidos · ${fmtN(p.paga.impressoes)} impressões pagas</div>` : ''}
+        </div>
+      </div>
+    `).join('') : '<div class="empty-state">Sem publicações sincronizadas ainda.</div>'}
+  `;
+  abrirModal('modalPerfil');
+}
+
+// ════════════════════════════════════════════════════════════════
+// RENDER — DIRECT (input manual)
+// ════════════════════════════════════════════════════════════════
+async function renderDirect(){
+  const registros = await carregarDirect();
+  const grid = document.getElementById('directGrid');
+  grid.innerHTML = store.contas.map(conta => {
+    const r = registros.find(x => x.conta_id === conta.id) || {};
+    return `
+    <div class="direct-card" id="direct-${conta.id}">
+      <h3>${conta.nome}</h3>
+      <div class="direct-row"><label>Mensagens recebidas hoje</label><input type="number" min="0" id="dr-msg-${conta.id}" value="${r.mensagens_recebidas_dia ?? ''}"></div>
+      <div class="direct-row"><label>Mensagens pendentes</label><input type="number" min="0" id="dr-pend-${conta.id}" value="${r.mensagens_pendentes ?? ''}"></div>
+      <div class="direct-row"><label>Tempo médio de resposta (min)</label><input type="number" min="0" step="0.5" id="dr-tempo-${conta.id}" value="${r.tempo_resposta_medio_min ?? ''}"></div>
+      <div class="direct-row"><label>Atendimentos concluídos</label><input type="number" min="0" id="dr-atend-${conta.id}" value="${r.atendimentos_concluidos ?? ''}"></div>
+      <button class="btn btn-ghost btn-block" onclick="salvarDirect('${conta.id}')">Salvar</button>
+    </div>`;
+  }).join('');
+}
+
+async function salvarDirect(contaId){
+  const val = (id) => { const v = document.getElementById(id).value; return v === '' ? null : Number(v); };
+  const { data: { session } } = await db.auth.getSession();
+  const hoje = new Date().toISOString().slice(0,10);
+  const { error } = await db.from('metricas_manuais').upsert({
+    conta_id: contaId,
+    data_referencia: hoje,
+    mensagens_recebidas_dia: val('dr-msg-' + contaId),
+    mensagens_pendentes: val('dr-pend-' + contaId),
+    tempo_resposta_medio_min: val('dr-tempo-' + contaId),
+    atendimentos_concluidos: val('dr-atend-' + contaId),
+    registrado_por: session?.user?.id || null,
+    registrado_por_nome: session?.user?.email || null,
+    atualizado_em: new Date().toISOString(),
+  }, { onConflict: 'conta_id,data_referencia' });
+  if(error){ toast('Erro ao salvar: ' + error.message, true); return; }
+  toast('Direct atualizado!');
+}
+
+// ════════════════════════════════════════════════════════════════
+// RENDER — CRITÉRIOS (pesos configuráveis)
+// ════════════════════════════════════════════════════════════════
+function renderCriterios(){
+  const el = document.getElementById('criteriosList');
+  el.innerHTML = store.criterios.map(c => `
+    <div class="crit-row">
+      <div>${c.nome}<div style="font-size:10.5px;color:var(--txt-faint);font-family:var(--mono)">${c.direcao === 'menor_melhor' ? 'menor é melhor' : 'maior é melhor'}</div></div>
+      <input type="range" min="0" max="50" value="${c.peso}" oninput="document.getElementById('peso-${c.chave}').textContent = this.value" id="range-${c.chave}">
+      <div class="peso-n" id="peso-${c.chave}">${c.peso}</div>
+      <span></span>
+    </div>
+  `).join('');
+}
+async function salvarCriterios(){
+  const updates = store.criterios.map(c => ({
+    chave: c.chave,
+    peso: Number(document.getElementById('range-' + c.chave).value),
+  }));
+  for(const u of updates){
+    await db.from('criterios_ranking').update({ peso: u.peso, atualizado_em: new Date().toISOString() }).eq('chave', u.chave);
+  }
+  toast('Pesos salvos! Valem a partir da próxima sincronização.');
+  const { data } = await db.from('criterios_ranking').select('*').order('peso', { ascending: false });
+  store.criterios = data || [];
+}
+
+// ════════════════════════════════════════════════════════════════
+// REALTIME — repica assim que o cron ou o botão manual terminam
+// ════════════════════════════════════════════════════════════════
+function iniciarRealtime(){
+  db.channel('via-permuta-insights')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ranking_execucoes' }, async () => {
+      await carregarTudo();
+      renderViewAtual();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'conquistas_perfil' }, async () => {
+      await carregarTudo();
+      renderViewAtual();
+    })
+    .subscribe();
+}
+
+// ════════════════════════════════════════════════════════════════
+// ROTEADOR
+// ════════════════════════════════════════════════════════════════
+let viewAtual = 'ranking';
+const VIEW_TITLES = { ranking: 'Ranking', perfis: 'Perfis', direct: 'Direct', criterios: 'Critérios' };
+function toggleSidebar(force){
+  const open = force !== undefined ? force : !document.getElementById('sidebar').classList.contains('open');
+  document.getElementById('sidebar').classList.toggle('open', open);
+  document.getElementById('sidebarBackdrop').classList.toggle('show', open);
+}
+function switchView(v){
+  viewAtual = v;
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  document.querySelectorAll('.sb-item[data-view]').forEach(el => el.classList.toggle('active', el.dataset.view === v));
+  document.getElementById('tbTitle').textContent = VIEW_TITLES[v] || v;
+  document.getElementById('origemToggle').style.display = (v === 'ranking' || v === 'perfis') ? 'flex' : 'none';
+  toggleSidebar(false);
+  renderViewAtual();
+}
+function renderViewAtual(){
+  if(viewAtual === 'ranking') renderRanking();
+  else if(viewAtual === 'perfis') renderPerfis();
+  else if(viewAtual === 'direct') renderDirect();
+  else if(viewAtual === 'criterios') renderCriterios();
+}
+
+async function iniciarApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').classList.add('ready');
+  document.getElementById('sbUserName').textContent = store.session?.user?.email || '';
+  await carregarTudo();
+  iniciarRealtime();
+  switchView('ranking');
+}
+(async function boot(){
+  const { data: { session } } = await db.auth.getSession();
+  if(session){ store.session = session; await iniciarApp(); }
+  db.auth.onAuthStateChange((event, session) => {
+    if(event === 'SIGNED_OUT') location.reload();
+  });
+})();
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key === 'Enter') fazerLogin(); });
+</script>
+</body>
+</html>

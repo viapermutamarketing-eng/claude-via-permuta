@@ -6,3 +6,9 @@ project_id = "pcvraalvtnmogirblvxq"
 # (JWT obrigatório) e todo POST do formulário voltaria 401.
 [functions.diagnostico-lead]
 verify_jwt = false
+
+# a Plataforma de Insights faz sua própria autenticação dentro da function
+# (SYNC_SECRET pro cron via pg_net, JWT de usuário logado pro botão manual)
+# porque o cron não consegue mandar o header padrão que o verify_jwt exige.
+[functions.sync-meta-insights]
+verify_jwt = false

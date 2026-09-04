@@ -86,6 +86,92 @@ Site 100% estático (HTML puro, sem build):
    que o site usa (anon key) já estão escritas direto no HTML.
 5. (Opcional) domínio próprio em *Project → Settings → Domains*.
 
+## Plataforma de Insights (`public/insights.html`)
+
+Painel gamificado de ranking de performance no Instagram/Meta das contas da
+Via Permuta (Master, Franca, Araxá, Curitiba, Uberlândia 1, Uberaba, contas
+pessoais do time e o Podcast Ruptura Empreendedores) — orgânico e tráfego
+pago lado a lado, com ranking automático 2x/dia. O pedido completo e o
+checklist de cobertura estão em [`docs/PLATAFORMA_INSIGHTS.md`](docs/PLATAFORMA_INSIGHTS.md)
+— consulte sempre que for evoluir a plataforma.
+
+Roda no **mesmo projeto Supabase** do CRM (zero custo extra): mesmas
+migrations, mesmo login de equipe, só uma Edge Function nova.
+
+### 1. Rodar as migrations novas
+
+Na ordem, depois das `0001`–`0007` já existentes:
+`0008_insights_contas.sql` → `0009_insights_publicacoes.sql` →
+`0010_insights_metricas_conta.sql` → `0011_insights_ranking_gamificacao.sql` →
+`0012_insights_rls.sql` → `0013_insights_realtime.sql` →
+`0014_insights_cron.sql`.
+
+A `0014` tem um placeholder `<SYNC_SECRET>` — troque pelas duas ocorrências
+por um segredo que você escolher **antes** de rodar essa migration (é o
+mesmo valor que vai em `SYNC_SECRET` no passo 3).
+
+### 2. Deploy da Edge Function
+
+```bash
+npx supabase functions deploy sync-meta-insights --no-verify-jwt
+npx supabase secrets set SYNC_SECRET=<o-mesmo-segredo-da-migration-0014>
+```
+
+### 3. Conectar cada conta do Instagram (uma vez por conta)
+
+A Graph API exige que a conta do Instagram seja **Business/Creator**,
+vinculada a uma Página do Facebook, dentro do Business Manager da Via
+Permuta. Como é uso interno (você administrando suas próprias contas), dá
+pra operar com um **token de sistema (System User)** do próprio Business
+Manager, sem precisar passar pelo App Review completo da Meta:
+
+1. [developers.facebook.com](https://developers.facebook.com) → criar um
+   App tipo "Business".
+2. No Business Manager → **Usuários do sistema** → criar um System User
+   com papel Admin → gerar token com as permissões:
+   `instagram_basic`, `instagram_manage_insights`,
+   `pages_read_engagement`, `pages_show_list`, e `ads_read` (se for
+   cruzar com tráfego pago).
+3. Pegar o **Instagram Business Account ID** de cada perfil (Graph API
+   Explorer: `GET /{page-id}?fields=instagram_business_account`) e, se for
+   cruzar pago, o **Ad Account ID** (`act_XXXXXXXXX`).
+4. No SQL Editor do Supabase, preencher a conta já criada pelo seed da
+   `0008` e gravar o token (só a Edge Function, com a service_role key,
+   consegue ler esta tabela — RLS bloqueia geral, ver `0012_insights_rls.sql`):
+   ```sql
+   update contas_sociais
+     set instagram_business_id = '17841400...',
+         facebook_page_id = '10000...',
+         ad_account_id = 'act_1234567890', -- opcional, só se for cruzar pago
+         username_instagram = '@viapermuta'
+     where nome = 'Via Permuta Master';
+
+   insert into contas_tokens (conta_id, access_token, escopos)
+     select id, 'EAAG...', 'instagram_basic,instagram_manage_insights,pages_read_engagement,ads_read'
+     from contas_sociais where nome = 'Via Permuta Master';
+   ```
+   Repita pra cada uma das 10 contas do seed. Token de System User dura
+   60 dias — marque uma recorrência pra renovar (`token_expira_em` ajuda a
+   lembrar).
+
+### 4. Testar
+
+No painel (`insights.html` → aba Ranking), clique **"Atualizar agora"** —
+dispara a Edge Function na hora, sem esperar o cron. Se alguma conta ainda
+não tiver token conectado, ela é simplesmente pulada (não quebra a
+sincronização das outras).
+
+O cron (`pg_cron`, migration `0014`) já fica agendado pra rodar sozinho
+todo dia às 00h00 e 12h00 (horário de Brasília).
+
+### Limitações da API do Meta
+
+Documentadas em detalhe no `docs/PLATAFORMA_INSIGHTS.md` — a mais
+relevante: a Graph API não expõe repost de terceiros no Story de outra
+conta, e não atribui seguidor novo a uma Foto/Carrossel específico (só a
+Reels, nativamente) — o app usa uma heurística marcada como estimativa
+nesses casos.
+
 ## Erros comuns
 
 - **401 no fetch do formulário** → esqueceu o `--no-verify-jwt` no deploy da function.

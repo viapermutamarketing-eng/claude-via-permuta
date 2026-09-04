@@ -3,10 +3,11 @@
 // pro HTML (sempre tenta buscar a versão mais nova primeiro, cai pro cache só
 // se estiver offline), cache-first pros assets estáticos (logo/ícones, que
 // não mudam).
-const CACHE = 'via-permuta-v1';
+const CACHE = 'via-permuta-v2';
 const APP_SHELL = [
   './index.html',
   './diagnostico.html',
+  './insights.html',
   './favicon.png',
   './manifest.json',
   './assets/logo-icon.png',
