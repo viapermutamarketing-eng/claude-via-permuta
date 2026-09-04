@@ -5,3 +5,6 @@ Thumbs.db
 .env.local
 node_modules/
 .supabase/
+web/.next/
+web/next-env.d.ts
+web/tsconfig.tsbuildinfo

@@ -164,6 +164,17 @@ sincronização das outras).
 O cron (`pg_cron`, migration `0014`) já fica agendado pra rodar sozinho
 todo dia às 00h00 e 12h00 (horário de Brasília).
 
+### Dashboard gamificado (Next.js + Tailwind + Framer Motion)
+
+Além do `insights.html` (zero-build, já em produção), existe uma segunda
+versão de UI em [`web/`](web/) — Next.js 14 + TypeScript + Tailwind CSS +
+Framer Motion, com o mesmo backend, focada 100% em gamificação/dopamina:
+pódio com medalhas SVG, confete quando o #1 muda, aura de fogo pra perfis
+"estourando", cards de conteúdo com Flip Effect (frente: métricas de
+vaidade / verso: análise deep). Ver [`web/README.md`](web/README.md) pra
+rodar (`cd web && npm install && npm run dev` — sobe com dados de
+demonstração mesmo sem nenhuma credencial configurada).
+
 ### Limitações da API do Meta
 
 Documentadas em detalhe no `docs/PLATAFORMA_INSIGHTS.md` — a mais

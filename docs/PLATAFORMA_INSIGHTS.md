@@ -155,6 +155,61 @@
    próprio Business Manager da Via Permuta), dá pra operar sem App Review
    completo; documentado passo a passo no README.
 
+## Pedido nº 2 (verbatim) — dashboard Next.js/Tailwind/Framer Motion
+
+> Atue como um Engenheiro de Software Sênior, Especialista em UI/UX e
+> Psicologia Comportamental (focado em Gamificação e Design
+> Dopaminérgico). [...] Utilize Next.js + Tailwind CSS + Framer Motion.
+> Quero animações fluidas em TUDO. Quando um perfil ultrapassar o outro
+> no ranking, quero uma animação de transição gloriosa (efeito de
+> confete ou brilho). Crie um sistema de 'Status Quente/Frio' [...] aura
+> de fogo [...]. Implemente feedback tátil e visual instantâneo nos
+> botões [...]. Desenhe a UI de um 'Leaderboard' que lembra o ranking de
+> um jogo competitivo [...]. O pódio (Top 3) deve ter medalhas de ouro,
+> prata, bronze em SVG. Incorpore 'Badges de Conquista' [...]. O
+> componente de Cards de Postagem deve ter um 'Flip Effect'. Me entregue
+> o código-fonte do layout principal da Dashboard (Hero, Leaderboard e
+> Cards de Análise) separando os componentes.
+
+### Checklist deste pedido
+
+- [x] Stack exata pedida: Next.js 14 (App Router) + TypeScript + Tailwind
+      CSS + Framer Motion — `web/`.
+- [x] Hero (`web/components/Hero.tsx`) — placar geral com contadores
+      animados e botão "Atualizar agora" com feedback tátil
+      (`whileTap`/`whileHover`, spinner, estados de sucesso/erro).
+- [x] Leaderboard estilo jogo competitivo (`web/components/Leaderboard.tsx`
+      + `LeaderboardRow.tsx`) — reordenação anima via `layout`/`layoutId`
+      do Framer Motion (a "transição gloriosa"); confete
+      (`web/lib/useConfetti.ts`, `canvas-confetti`) dispara só quando o
+      #1 realmente muda.
+- [x] Pódio Top 3 com medalhas SVG ouro/prata/bronze
+      (`web/components/PodiumMedal.tsx`) e design muito acima do resto
+      (`PodiumCard.tsx`).
+- [x] Sistema Quente/Frio com aura de fogo
+      (`web/components/TemperatureAura.tsx` + `web/lib/temperature.ts`),
+      usado tanto nos perfis quanto nos posts.
+- [x] Badges de conquista ao lado do avatar
+      (`web/components/Badge.tsx`) — chaves de exemplo já semeadas em
+      `criterios_ranking`/`conquistas` (Mestre do Direct, Rei da
+      Retenção, Tráfego Sniper ficam fáceis de adicionar como novas
+      linhas em `conquistas`, mesmo padrão de `top1_ranking`).
+- [x] Cards de Análise com Flip Effect
+      (`web/components/AnalysisCard.tsx`) — frente com métricas de
+      vaidade (views/curtidas/envios/salvos), verso com análise deep
+      (retenção, engajamento, orgânico x pago, custo por resultado).
+- [x] Código preparado pra Meta Graph API + Supabase a custo zero —
+      reaproveita literalmente o mesmo schema/Edge Function do v1
+      (`web/lib/types.ts` espelha `supabase/migrations`, `web/lib/data.ts`
+      lê via RLS `authenticated`), sem nenhum serviço novo.
+- [ ] Login dedicado dentro do Next (hoje reaproveita sessão do Supabase
+      Auth se existir; sem sessão, cai em modo demonstração com dados
+      fictícios mas 100% navegável — decisão registrada em
+      `web/README.md`).
+- [ ] Deploy do `web/` em produção (é um segundo projeto Vercel, com
+      framework preset "Next.js" — diferente do `public/`, que continua
+      "Other"/estático).
+
 ## Próximos passos (backlog, fora do v1)
 - Papéis diferenciados por função (Social Selling vs. Social Media).
 - Fluxo de OAuth "Conectar Instagram" com botão (v1 usa token de sistema
