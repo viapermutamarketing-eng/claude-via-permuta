@@ -2,9 +2,10 @@
 
 Camada visual "premium" da Plataforma de Insights: Next.js 14 (App Router) +
 TypeScript + Tailwind CSS + Framer Motion. Convive com o painel estático em
-`../public/insights.html` (mesmo backend, mesmo Supabase) — este aqui é a
-versão gamificada/dopaminérgica pedida especificamente com esse stack;
-o `insights.html` continua funcionando como versão zero-build já em produção.
+`../public/insights.html` (mesmo backend — projeto Supabase dedicado da
+Plataforma de Insights, separado do CRM de vendas) — este aqui é a versão
+gamificada/dopaminérgica pedida especificamente com esse stack; o
+`insights.html` continua funcionando como versão zero-build já em produção.
 
 Ver o pedido original e o restante da arquitetura (banco, Edge Function,
 Meta Graph API) em [`../docs/PLATAFORMA_INSIGHTS.md`](../docs/PLATAFORMA_INSIGHTS.md).
@@ -29,19 +30,22 @@ real conectada.
 2. Configure (Vercel → Project Settings → Environment Variables, ou
    `.env.local` localmente):
    ```
-   NEXT_PUBLIC_SUPABASE_URL=https://pcvraalvtnmogirblvxq.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=<a mesma anon/publishable key de public/index.html>
+   NEXT_PUBLIC_SUPABASE_URL=https://inhpbwnrhflmvvdwplov.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_CpW3MCpkKQjnN0MgFkJZ2w_hkPvc7DU
    ```
+   (é o mesmo projeto que `public/insights.html` usa — dedicado à
+   Plataforma de Insights, separado do Supabase do CRM de vendas).
 3. As migrations/Edge Function em `../supabase` já fazem todo o trabalho de
-   ETL (ver `../supabase/functions/sync-meta-insights`) — este app só lê as
-   tabelas (`ranking_perfis`, `ranking_publicacoes`, `conquistas_perfil`
-   etc.), sempre via RLS `authenticated` (mesma regra do CRM).
+   ETL (ver `../supabase/functions/sync-meta-insights`, publicada via
+   `.github/workflows/deploy-supabase.yml`) — este app só lê as tabelas
+   (`ranking_perfis`, `ranking_publicacoes`, `conquistas_perfil` etc.),
+   sempre via RLS `authenticated`.
 4. **Autenticação**: `lib/data.ts` só troca o mock pelos dados reais quando
-   existe uma sessão Supabase Auth ativa no navegador (a mesma conta de
-   equipe do CRM). Este pacote entrega o *layout* pedido (Hero, Leaderboard,
-   Cards); a tela de login pode reaproveitar o mesmo componente de
-   `public/index.html`/`public/insights.html` — é o próximo passo antes de
-   ir pra produção com dados reais.
+   existe uma sessão Supabase Auth ativa no navegador — crie o usuário da
+   equipe direto nesse projeto (Supabase → Authentication → Users). Este
+   pacote entrega o *layout* pedido (Hero, Leaderboard, Cards); a tela de
+   login pode reaproveitar o mesmo componente de `public/insights.html` —
+   é o próximo passo antes de ir pra produção com dados reais.
 
 ## Estrutura
 

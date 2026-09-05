@@ -95,27 +95,38 @@ pago lado a lado, com ranking automático 2x/dia. O pedido completo e o
 checklist de cobertura estão em [`docs/PLATAFORMA_INSIGHTS.md`](docs/PLATAFORMA_INSIGHTS.md)
 — consulte sempre que for evoluir a plataforma.
 
-Roda no **mesmo projeto Supabase** do CRM (zero custo extra): mesmas
-migrations, mesmo login de equipe, só uma Edge Function nova.
+Roda num **projeto Supabase dedicado** — `inhpbwnrhflmvvdwplov`,
+**separado** do projeto do CRM de vendas — de propósito: dado de rede
+social nunca se mistura com dado de lead. Zero custo extra mesmo assim
+(free tier cobre os dois projetos).
 
-### 1. Rodar as migrations novas
+### 1. Deploy automático (GitHub Actions)
 
-Na ordem, depois das `0001`–`0007` já existentes:
-`0008_insights_contas.sql` → `0009_insights_publicacoes.sql` →
-`0010_insights_metricas_conta.sql` → `0011_insights_ranking_gamificacao.sql` →
-`0012_insights_rls.sql` → `0013_insights_realtime.sql` →
-`0014_insights_cron.sql`.
+`.github/workflows/deploy-supabase.yml` aplica as migrations e publica a
+Edge Function sozinho a cada push na `main` que mexer em `supabase/`
+(ou rodando manualmente na aba **Actions** → *Deploy Supabase* → **Run
+workflow**). Existe porque sandboxes de agente costumam ter a rede pro
+Supabase bloqueada — o workflow roda no runner do GitHub, que tem
+internet livre.
 
-A `0014` tem um placeholder `<SYNC_SECRET>` — troque pelas duas ocorrências
-por um segredo que você escolher **antes** de rodar essa migration (é o
-mesmo valor que vai em `SYNC_SECRET` no passo 3).
+Só precisa cadastrar **3 segredos** uma vez, em
+*Settings → Secrets and variables → Actions → New repository secret*:
 
-### 2. Deploy da Edge Function
+| Nome do secret | Onde conseguir |
+|---|---|
+| `SUPABASE_ACCESS_TOKEN` | [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) → Generate new token |
+| `SUPABASE_DB_PASSWORD` | Supabase → Project Settings → Database (a senha que você definiu ao criar o projeto — "Reset database password" se esqueceu) |
+| `SYNC_SECRET` | Qualquer valor aleatório que você escolher (ex.: rode `openssl rand -base64 32` no terminal) — é só um handshake interno entre o cron e a Edge Function, nunca fica salvo no código |
 
-```bash
-npx supabase functions deploy sync-meta-insights --no-verify-jwt
-npx supabase secrets set SYNC_SECRET=<o-mesmo-segredo-da-migration-0014>
-```
+Depois de cadastrar os três, um push (ou o "Run workflow" manual) já deixa
+banco + Edge Function no ar sozinho — sem precisar rodar nada local.
+
+### 2. Criar o login da equipe neste projeto
+
+Como é um projeto novo, os usuários da equipe ainda não existem aqui
+(são diferentes dos usuários do CRM). Supabase → **Authentication → Users
+→ Add user**, um por pessoa do time (Social Sellers e Social Medias usam
+o mesmo login pra entrar no `insights.html`).
 
 ### 3. Conectar cada conta do Instagram (uma vez por conta)
 
@@ -174,6 +185,19 @@ pódio com medalhas SVG, confete quando o #1 muda, aura de fogo pra perfis
 vaidade / verso: análise deep). Ver [`web/README.md`](web/README.md) pra
 rodar (`cd web && npm install && npm run dev` — sobe com dados de
 demonstração mesmo sem nenhuma credencial configurada).
+
+**Pra publicar** (é um projeto Vercel separado do `public/` — frameworks
+diferentes não dividem projeto):
+1. Vercel → **Add New → Project** → importar o mesmo repositório de novo.
+2. **Root Directory: `web`**, framework detectado automaticamente como
+   Next.js.
+3. Environment Variables:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://inhpbwnrhflmvvdwplov.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_CpW3MCpkKQjnN0MgFkJZ2w_hkPvc7DU
+   ```
+4. Deploy. Fica num domínio `.vercel.app` próprio (dá pra apontar um
+   domínio customizado depois, igual o site principal).
 
 ### Limitações da API do Meta
 

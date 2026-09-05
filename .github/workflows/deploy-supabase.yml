@@ -1,0 +1,69 @@
+name: Deploy Supabase (Plataforma de Insights)
+
+# Roda no runner do GitHub (tem internet livre) — não depende de nenhuma
+# sessão de agente ter acesso à rede do Supabase, que costuma ser
+# bloqueada em sandboxes. Aplica as migrations e publica a Edge Function
+# sempre que algo em supabase/ muda na main, ou sob demanda.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - ".github/workflows/deploy-supabase.yml"
+  workflow_dispatch: {}
+
+env:
+  # Projeto dedicado da Plataforma de Insights (não é o projeto do CRM de
+  # vendas) — não é segredo, é só o identificador do projeto.
+  SUPABASE_PROJECT_REF: inhpbwnrhflmvvdwplov
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link no projeto
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Aplicar migrations (schema do banco)
+        run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Publicar a Edge Function sync-meta-insights
+        run: supabase functions deploy sync-meta-insights --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Setar o secret SYNC_SECRET da function
+        run: supabase secrets set SYNC_SECRET="$SYNC_SECRET" --project-ref "$SUPABASE_PROJECT_REF"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SYNC_SECRET: ${{ secrets.SYNC_SECRET }}
+
+      - name: Gravar o mesmo SYNC_SECRET no job do pg_cron
+        # A migration 0014 só deixa o placeholder <SYNC_SECRET> (nunca um
+        # valor real vai pro git) — aqui, no momento do deploy, ele é
+        # substituído direto no banco. Idempotente: depois da primeira
+        # troca o placeholder não existe mais, então rodar de novo é
+        # inofensivo (replace vira no-op).
+        run: |
+          sudo apt-get update -y >/dev/null && sudo apt-get install -y postgresql-client >/dev/null
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "
+            select cron.alter_job(jobid, command := replace(command, '<SYNC_SECRET>', '${SYNC_SECRET}'))
+            from cron.job
+            where jobname in ('insights-ranking-00h-brt', 'insights-ranking-12h-brt');
+          "
+        env:
+          DATABASE_URL: postgresql://postgres:${{ secrets.SUPABASE_DB_PASSWORD }}@db.${{ env.SUPABASE_PROJECT_REF }}.supabase.co:5432/postgres
+          SYNC_SECRET: ${{ secrets.SYNC_SECRET }}

@@ -5,14 +5,18 @@
 -- `sync-meta-insights` de dentro do próprio Postgres, sem depender de
 -- nenhum serviço externo — zero custo).
 --
--- ⚠️ PLACEHOLDER — troque antes de rodar esta migration:
---   <SYNC_SECRET>  → um segredo qualquer que você escolher, e que
---                    também precisa ser setado na Edge Function via
---                    `npx supabase secrets set SYNC_SECRET=...`
---                    (ver README → "Plataforma de Insights").
---   A URL já usa o project ref real do projeto (pcvraalvtnmogirblvxq,
---   o mesmo que aparece em public/index.html) — só troque se algum dia
---   migrar de projeto Supabase.
+-- Projeto Supabase dedicado da Plataforma de Insights (separado do projeto
+-- do CRM de vendas — inhpbwnrhflmvvdwplov, não pcvraalvtnmogirblvxq — de
+-- propósito, pra nunca misturar dados de leads com dados de redes sociais).
+--
+-- O placeholder `<SYNC_SECRET>` abaixo NUNCA deve virar um valor real
+-- neste arquivo (não commitar segredo em texto puro no git). Quem
+-- substitui pelo valor de verdade é o próprio deploy automatizado
+-- (`.github/workflows/deploy-supabase.yml`, secret `SYNC_SECRET` do
+-- GitHub), rodando um UPDATE em `cron.job` logo depois desta migration —
+-- é só um handshake interno entre o pg_cron e a Edge Function do mesmo
+-- projeto, não protege dado nenhum sozinho (o endpoint também aceita
+-- qualquer usuário autenticado do painel).
 -- ════════════════════════════════════════════════════════════════
 
 create extension if not exists pg_cron;
@@ -23,7 +27,7 @@ select cron.schedule(
   '0 3 * * *',
   $$
   select net.http_post(
-    url := 'https://pcvraalvtnmogirblvxq.supabase.co/functions/v1/sync-meta-insights',
+    url := 'https://inhpbwnrhflmvvdwplov.supabase.co/functions/v1/sync-meta-insights',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer <SYNC_SECRET>'
@@ -38,7 +42,7 @@ select cron.schedule(
   '0 15 * * *',
   $$
   select net.http_post(
-    url := 'https://pcvraalvtnmogirblvxq.supabase.co/functions/v1/sync-meta-insights',
+    url := 'https://inhpbwnrhflmvvdwplov.supabase.co/functions/v1/sync-meta-insights',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer <SYNC_SECRET>'

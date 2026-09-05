@@ -208,7 +208,38 @@
       `web/README.md`).
 - [ ] Deploy do `web/` em produção (é um segundo projeto Vercel, com
       framework preset "Next.js" — diferente do `public/`, que continua
-      "Other"/estático).
+      "Other"/estático). Passo a passo no README.
+
+## Decisão: projeto Supabase dedicado + deploy via GitHub Actions
+
+Quando chegou a hora de publicar de verdade (não só código), duas coisas
+mudaram o plano original:
+
+1. **Projeto Supabase separado do CRM** — em vez de reaproveitar o projeto
+   do CRM de vendas (`pcvraalvtnmogirblvxq`), a Plataforma de Insights
+   ganhou um projeto Supabase próprio (`inhpbwnrhflmvvdwplov`). Decisão
+   deliberada: dado de rede social nunca se mistura com dado de lead, e
+   cada plataforma pode evoluir/resetar sem risco pra outra. Login de
+   equipe também é uma conta nova, criada direto nesse projeto.
+2. **Deploy automatizado via GitHub Actions** (`.github/workflows/deploy-supabase.yml`)
+   em vez de rodar `supabase db push`/`functions deploy` manualmente —
+   descoberto na prática que sandboxes de agente costumam ter a rede pro
+   Supabase bloqueada por política de egress (confirmado: `supabase.co`
+   inteiro dá `connect_rejected` nesse ambiente). O workflow roda no
+   runner do GitHub (rede livre) a cada push que mexer em `supabase/`, ou
+   sob demanda. Só precisa de 3 secrets cadastrados uma vez no repositório
+   (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SYNC_SECRET`) — ver
+   README. O `SYNC_SECRET` nunca é commitado em texto puro: a migration
+   `0014` guarda só o placeholder `<SYNC_SECRET>`, e o workflow troca pelo
+   valor real direto no banco no momento do deploy.
+
+Isso também é o motivo de eu (Claude) nunca conseguir rodar as migrations
+ou publicar a Edge Function diretamente de uma sessão de agente, mesmo com
+as chaves da API em mãos — as chaves publishable/secret servem pra
+chamadas de API (Data API, Auth), não pra CLI/migrations, que pedem um
+Personal Access Token + senha do banco, e mesmo tendo isso, a rede do
+sandbox bloqueia o host. O caminho certo é sempre via CI (GitHub Actions),
+não um agente tentando alcançar o Supabase direto.
 
 ## Próximos passos (backlog, fora do v1)
 - Papéis diferenciados por função (Social Selling vs. Social Media).

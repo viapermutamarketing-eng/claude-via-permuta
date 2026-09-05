@@ -46,7 +46,10 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const SUPABASE_URL     = Deno.env.get("SUPABASE_URL") ?? ""
-const SUPABASE_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+// Nome da env var muda conforme o sistema de chaves do projeto (legado
+// "service_role" vs. o novo "secret key") — aceita qualquer um dos dois,
+// ambos vêm automáticos, nunca precisam ser setados manualmente.
+const SUPABASE_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SECRET_KEY") ?? ""
 const SYNC_SECRET      = Deno.env.get("SYNC_SECRET") ?? ""
 const GRAPH_VERSION    = "v21.0"
 

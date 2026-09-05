@@ -300,11 +300,14 @@ input,select,textarea{font-family:inherit}
 
 <script>
 // ════════════════════════════════════════════════════════════════
-// CONFIG — mesmo projeto Supabase do CRM (public/index.html): a
-// Plataforma de Insights reaproveita login, banco e Realtime.
+// CONFIG — projeto Supabase DEDICADO da Plataforma de Insights,
+// separado do projeto do CRM de vendas (public/index.html) de
+// propósito: dados de redes sociais nunca se misturam com leads.
+// Login de equipe é uma conta nova, criada direto neste projeto
+// (Supabase → Authentication → Users).
 // ════════════════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://pcvraalvtnmogirblvxq.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_lgJRKGKsBfDWq8qyK1DRYw_oTTLU2pU';
+const SUPABASE_URL = 'https://inhpbwnrhflmvvdwplov.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_CpW3MCpkKQjnN0MgFkJZ2w_hkPvc7DU';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const store = {
