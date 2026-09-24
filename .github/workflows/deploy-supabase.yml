@@ -65,5 +65,9 @@ jobs:
             where jobname in ('insights-ranking-00h-brt', 'insights-ranking-12h-brt');
           "
         env:
-          DATABASE_URL: postgresql://postgres:${{ secrets.SUPABASE_DB_PASSWORD }}@db.${{ env.SUPABASE_PROJECT_REF }}.supabase.co:5432/postgres
+          # Conexão direta (db.<ref>.supabase.co) é IPv6-only nos projetos
+          # novos do Supabase, e os runners hospedados do GitHub Actions
+          # não têm saída IPv6 — por isso usamos o connection pooler
+          # (IPv4-compatível) em vez da conexão direta.
+          DATABASE_URL: postgresql://postgres.${{ env.SUPABASE_PROJECT_REF }}:${{ secrets.SUPABASE_DB_PASSWORD }}@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
           SYNC_SECRET: ${{ secrets.SYNC_SECRET }}
