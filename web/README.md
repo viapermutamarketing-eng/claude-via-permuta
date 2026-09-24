@@ -30,8 +30,8 @@ real conectada.
 2. Configure (Vercel → Project Settings → Environment Variables, ou
    `.env.local` localmente):
    ```
-   NEXT_PUBLIC_SUPABASE_URL=https://inhpbwnrhflmvvdwplov.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_CpW3MCpkKQjnN0MgFkJZ2w_hkPvc7DU
+   NEXT_PUBLIC_SUPABASE_URL=https://qkukcyrglfmlacwqvbay.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_rJkaMu3McCheeddi27vwPg_5CZQLsV4
    ```
    (é o mesmo projeto que `public/insights.html` usa — dedicado à
    Plataforma de Insights, separado do Supabase do CRM de vendas).

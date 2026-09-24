@@ -6,7 +6,7 @@
 -- nenhum serviço externo — zero custo).
 --
 -- Projeto Supabase dedicado da Plataforma de Insights (separado do projeto
--- do CRM de vendas — inhpbwnrhflmvvdwplov, não pcvraalvtnmogirblvxq — de
+-- do CRM de vendas — qkukcyrglfmlacwqvbay, não pcvraalvtnmogirblvxq — de
 -- propósito, pra nunca misturar dados de leads com dados de redes sociais).
 --
 -- O placeholder `<SYNC_SECRET>` abaixo NUNCA deve virar um valor real
@@ -27,7 +27,7 @@ select cron.schedule(
   '0 3 * * *',
   $$
   select net.http_post(
-    url := 'https://inhpbwnrhflmvvdwplov.supabase.co/functions/v1/sync-meta-insights',
+    url := 'https://qkukcyrglfmlacwqvbay.supabase.co/functions/v1/sync-meta-insights',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer <SYNC_SECRET>'
@@ -42,7 +42,7 @@ select cron.schedule(
   '0 15 * * *',
   $$
   select net.http_post(
-    url := 'https://inhpbwnrhflmvvdwplov.supabase.co/functions/v1/sync-meta-insights',
+    url := 'https://qkukcyrglfmlacwqvbay.supabase.co/functions/v1/sync-meta-insights',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer <SYNC_SECRET>'

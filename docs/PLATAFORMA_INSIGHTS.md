@@ -217,7 +217,7 @@ mudaram o plano original:
 
 1. **Projeto Supabase separado do CRM** — em vez de reaproveitar o projeto
    do CRM de vendas (`pcvraalvtnmogirblvxq`), a Plataforma de Insights
-   ganhou um projeto Supabase próprio (`inhpbwnrhflmvvdwplov`). Decisão
+   ganhou um projeto Supabase próprio (`qkukcyrglfmlacwqvbay`). Decisão
    deliberada: dado de rede social nunca se mistura com dado de lead, e
    cada plataforma pode evoluir/resetar sem risco pra outra. Login de
    equipe também é uma conta nova, criada direto nesse projeto.

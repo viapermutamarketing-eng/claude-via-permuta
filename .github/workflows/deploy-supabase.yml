@@ -17,7 +17,7 @@ on:
 env:
   # Projeto dedicado da Plataforma de Insights (não é o projeto do CRM de
   # vendas) — não é segredo, é só o identificador do projeto.
-  SUPABASE_PROJECT_REF: inhpbwnrhflmvvdwplov
+  SUPABASE_PROJECT_REF: qkukcyrglfmlacwqvbay
 
 jobs:
   deploy:

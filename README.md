@@ -95,7 +95,7 @@ pago lado a lado, com ranking automático 2x/dia. O pedido completo e o
 checklist de cobertura estão em [`docs/PLATAFORMA_INSIGHTS.md`](docs/PLATAFORMA_INSIGHTS.md)
 — consulte sempre que for evoluir a plataforma.
 
-Roda num **projeto Supabase dedicado** — `inhpbwnrhflmvvdwplov`,
+Roda num **projeto Supabase dedicado** — `qkukcyrglfmlacwqvbay`,
 **separado** do projeto do CRM de vendas — de propósito: dado de rede
 social nunca se mistura com dado de lead. Zero custo extra mesmo assim
 (free tier cobre os dois projetos).
@@ -193,8 +193,8 @@ diferentes não dividem projeto):
    Next.js.
 3. Environment Variables:
    ```
-   NEXT_PUBLIC_SUPABASE_URL=https://inhpbwnrhflmvvdwplov.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_CpW3MCpkKQjnN0MgFkJZ2w_hkPvc7DU
+   NEXT_PUBLIC_SUPABASE_URL=https://qkukcyrglfmlacwqvbay.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_rJkaMu3McCheeddi27vwPg_5CZQLsV4
    ```
 4. Deploy. Fica num domínio `.vercel.app` próprio (dá pra apontar um
    domínio customizado depois, igual o site principal).
