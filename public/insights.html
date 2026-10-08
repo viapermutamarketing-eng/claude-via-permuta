@@ -132,6 +132,29 @@ input,select,textarea{font-family:inherit}
 .panel h2{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--cream);margin-bottom:16px}
 .empty-state{text-align:center;padding:40px 20px;color:var(--txt-faint);font-size:13.5px}
 
+/* ── campanhas (decisão de mídia) ── */
+.camp-metas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:6px}
+.camp-metas .field{margin-bottom:0}
+.camp-scroll{overflow-x:auto;border:1px solid var(--border-2);border-radius:12px}
+.camp-table{border-collapse:collapse;width:100%;min-width:880px;font-size:12.5px}
+.camp-table th,.camp-table td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--border-2);white-space:nowrap}
+.camp-table th{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-faint);background:var(--card-2);position:sticky;top:0}
+.camp-table td{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--txt-dim)}
+.camp-table th:first-child,.camp-table td:first-child{text-align:left;white-space:normal;min-width:200px;max-width:300px;font-family:var(--sans);color:var(--txt)}
+.camp-table tbody tr:last-child td{border-bottom:none}
+.camp-table tr.g-critico td:first-child{box-shadow:inset 3px 0 0 var(--red)}
+.camp-table tr.g-atencao td:first-child{box-shadow:inset 3px 0 0 var(--amber)}
+.camp-table tr.g-ok td:first-child{box-shadow:inset 3px 0 0 var(--green)}
+.camp-nome{font-weight:700;display:block}
+.camp-funcao{font-size:11px;color:var(--txt-faint);display:block;margin-top:2px}
+.camp-table td.vd{text-align:left;white-space:normal;min-width:210px;font-family:var(--sans)}
+.vd-pill{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+.vd-critico{background:rgba(228,104,91,.16);color:var(--red)}
+.vd-atencao{background:rgba(224,168,63,.16);color:var(--amber)}
+.vd-ok{background:rgba(63,191,127,.16);color:var(--green)}
+.vd-neutro{background:var(--card-2);color:var(--txt-faint)}
+.vd-why{display:block;font-size:11.5px;color:var(--txt-faint);margin-top:5px;line-height:1.45}
+
 /* ── perfis (grid + drilldown) ── */
 .perfis-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
 .post-card{display:flex;gap:12px;background:var(--night-2);border:1px solid var(--border-2);border-radius:12px;padding:12px;margin-bottom:10px;align-items:center}
@@ -211,6 +234,9 @@ input,select,textarea{font-family:inherit}
       <div class="sb-item" data-view="perfis" onclick="switchView('perfis')">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Perfis
       </div>
+      <div class="sb-item" data-view="campanhas" onclick="switchView('campanhas')">
+        <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-6 3 4 4-7"/></svg>Campanhas
+      </div>
       <div class="sb-item" data-view="direct" onclick="switchView('direct')">
         <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>Direct
       </div>
@@ -256,6 +282,28 @@ input,select,textarea{font-family:inherit}
     <!-- PERFIS -->
     <div class="view" id="view-perfis">
       <div class="perfis-grid" id="perfisGrid"></div>
+    </div>
+
+    <!-- CAMPANHAS -->
+    <div class="view" id="view-campanhas">
+      <div class="panel">
+        <h2>Metas de mídia</h2>
+        <p style="font-size:12.5px;color:var(--txt-faint);margin-bottom:16px">
+          O veredito de cada campanha é calculado contra estas metas — não contra benchmark de
+          mercado. Mude aqui o que o negócio aceita pagar e a tabela abaixo recalcula.
+        </p>
+        <div class="camp-metas" id="campMetas"></div>
+        <button class="btn btn-gold" style="margin-top:16px" onclick="salvarMetas()">Salvar metas</button>
+      </div>
+      <div class="panel">
+        <h2>Diagnóstico por campanha — últimos 7 dias</h2>
+        <p style="font-size:12.5px;color:var(--txt-faint);margin-bottom:16px">
+          Alcance e frequência vêm da janela agregada da Marketing API, não de soma de dias:
+          <code>reach</code> desduplica pessoas dentro da janela, então somar 7 alcances diários
+          subestimaria a frequência — que é exatamente o número que decide se o remarketing saturou.
+        </p>
+        <div id="campConteudo"></div>
+      </div>
     </div>
 
     <!-- DIRECT -->
@@ -320,6 +368,8 @@ const store = {
   conquistasPorConta: {},
   publicacoesPorConta: {},   // conta_id -> [{...publicacao, metricas:[...], pagas:[...]}]
   criterios: [],
+  campanhas: [],             // v_diagnostico_campanha (janela de 7d)
+  metasCampanha: null,
   origemFiltro: 'combinado', // combinado | organico | impulsionado
 };
 
@@ -385,14 +435,18 @@ async function fazerLogout(){
 // CAMADA DE DADOS
 // ════════════════════════════════════════════════════════════════
 async function carregarTudo(){
-  const [contasRes, criteriosRes, ultimaExecRes] = await Promise.all([
+  const [contasRes, criteriosRes, ultimaExecRes, campanhasRes, metasRes] = await Promise.all([
     db.from('contas_sociais').select('*').eq('ativo', true).order('ordem', { ascending: true }),
     db.from('criterios_ranking').select('*').order('peso', { ascending: false }),
     db.from('ranking_execucoes').select('*').eq('status', 'concluido').order('criado_em', { ascending: false }).limit(1),
+    db.from('v_diagnostico_campanha').select('*').order('orcamento_diario', { ascending: false, nullsFirst: false }),
+    db.from('metas_campanha').select('*').limit(1),
   ]);
   store.contas = contasRes.data || [];
   store.criterios = criteriosRes.data || [];
   store.execucaoAtual = (ultimaExecRes.data || [])[0] || null;
+  store.campanhas = campanhasRes.data || [];
+  store.metasCampanha = (metasRes.data || [])[0] || null;
 
   if(store.execucaoAtual){
     const [perfisRes, pubsRes, conquistasContaRes] = await Promise.all([
@@ -644,6 +698,94 @@ function renderCriterios(){
     </div>
   `).join('');
 }
+// ── campanhas: decisão de mídia (pra onde vai o orçamento) ──
+// Rótulo e explicação de cada veredito. A LÓGICA mora na view
+// `v_diagnostico_campanha` (migração 0015), não aqui — o front só
+// traduz. Assim painel, SQL e qualquer outro consumidor nunca divergem.
+const VEREDITOS = {
+  trocar_objetivo:  { rotulo: 'Trocar objetivo',  texto: c => `Objetivo de alcance não otimiza pelo resultado que a campanha busca${c.custo_por_resultado ? `: o custo de ${fmtBRL(c.custo_por_resultado)} é divisão aritmética, não meta do leilão` : ''}. Duplicar para Engajamento → visitas ao perfil e comparar 7 dias.` },
+  cortar_conjuntos: { rotulo: 'Cortar conjuntos', texto: c => `${c.conjuntos_ativos} conjuntos exigem ${fmtBRL(c.minimo_aprendizado_dia)}/dia para sair do aprendizado, e a campanha tem ${fmtBRL(c.orcamento_diario)}/dia. Teto sustentável neste custo: ${c.conjuntos_sustentaveis} conjunto${Number(c.conjuntos_sustentaveis) === 1 ? '' : 's'}.` },
+  ampliar_publico:  { rotulo: 'Ampliar público',  texto: c => `Frequência ${Number(c.frequencia).toFixed(1).replace('.', ',')} em 7 dias, acima do limite de ${Number(c.limite_frequencia).toFixed(1).replace('.', ',')}. Ampliar a janela do público ou reduzir o orçamento.` },
+  sem_resultado:    { rotulo: 'Sem resultado',    texto: c => `Gasto de ${fmtBRL(c.gasto)} em 7 dias sem resultado registrado. Verifique se o evento de conversão está disparando.` },
+  pausar_refazer:   { rotulo: 'Pausar e refazer', texto: c => `Custo por resultado ${fmtBRL(c.custo_por_resultado)} é mais de 50% acima da meta de ${fmtBRL(c.meta_aplicada)}. Criativo e público novos, não ajuste de verba.` },
+  corrigir:         { rotulo: 'Corrigir',         texto: c => `Custo por resultado ${fmtBRL(c.custo_por_resultado)} acima da meta de ${fmtBRL(c.meta_aplicada)}, mas dentro de 50%. Trocar criativo antes de mexer em orçamento.` },
+  subir_orcamento:  { rotulo: 'Subir orçamento',  texto: c => `Custo está dentro da meta, mas ${fmtBRL(c.orcamento_diario)}/dia não sustenta nem um conjunto no aprendizado neste custo: o mínimo é ${fmtBRL(c.orcamento_minimo_um_conjunto)}/dia. A trava é de volume, não de eficiência.` },
+  escalar:          { rotulo: 'Escalar',          texto: c => `Custo por resultado ${fmtBRL(c.custo_por_resultado)} está 20% ou mais abaixo da meta, sem trava de aprendizado nem de frequência. Subir 20–25% a cada 3 ou 4 dias.` },
+  manter:           { rotulo: 'Manter',           texto: c => `Custo por resultado ${fmtBRL(c.custo_por_resultado)} dentro da meta de ${fmtBRL(c.meta_aplicada)}. Sem motivo para mexer esta semana.` },
+  sem_dados:        { rotulo: 'Sem dados',        texto: () => 'Nenhum gasto registrado na janela de 7 dias.' },
+};
+const METAS_CAMPOS = [
+  { chave: 'meta_cpl',            label: 'Meta de CPL (R$)',          step: '1'   },
+  { chave: 'meta_custo_seguidor', label: 'Custo/seguidor (R$)',       step: '0.1' },
+  { chave: 'limite_frequencia',   label: 'Limite de frequência 7d',   step: '0.1' },
+  { chave: 'eventos_aprendizado', label: 'Eventos/conjunto/semana',   step: '1'   },
+];
+function fmtBRL(v){
+  if(v === null || v === undefined || v === '') return '—';
+  return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function renderCampanhas(){
+  const metas = store.metasCampanha || {};
+  document.getElementById('campMetas').innerHTML = METAS_CAMPOS.map(f => `
+    <div class="field">
+      <label for="meta-${f.chave}">${f.label}</label>
+      <input type="number" min="0" step="${f.step}" id="meta-${f.chave}" value="${metas[f.chave] ?? ''}">
+    </div>`).join('');
+
+  const alvo = document.getElementById('campConteudo');
+  if(!store.campanhas.length){
+    alvo.innerHTML = `<div class="empty-state">
+      Nenhuma campanha sincronizada ainda. Preencha <code>ad_account_id</code> na conta social e
+      garanta o escopo <code>ads_read</code> no token — a próxima sincronização popula esta tabela.
+    </div>`;
+    return;
+  }
+  const linhas = store.campanhas.map(c => {
+    const v = VEREDITOS[c.veredito] || { rotulo: c.veredito, texto: () => '' };
+    const g = c.gravidade || 'neutro';
+    return `<tr class="g-${g}">
+      <td><span class="camp-nome">${c.nome}</span><span class="camp-funcao">${c.funcao}${c.acao_resultado ? ' · resultado: ' + c.acao_resultado : ''}</span></td>
+      <td>${c.orcamento_diario ? fmtBRL(c.orcamento_diario) : '—'}</td>
+      <td>${c.conjuntos_ativos ?? '—'}</td>
+      <td>${fmtBRL(c.gasto)}</td>
+      <td>${fmtN(c.impressoes)}</td>
+      <td>${fmtN(c.alcance)}</td>
+      <td>${c.frequencia ? Number(c.frequencia).toFixed(1).replace('.', ',') : '—'}</td>
+      <td>${fmtBRL(c.cpm)}</td>
+      <td>${fmtN(c.resultados)}</td>
+      <td>${fmtBRL(c.custo_por_resultado)}</td>
+      <td>${c.minimo_aprendizado_dia ? fmtBRL(c.minimo_aprendizado_dia) : (c.funcao === 'alcance' ? 'n/a' : '—')}</td>
+      <td class="vd"><span class="vd-pill vd-${g}">${v.rotulo}</span><span class="vd-why">${v.texto(c)}</span></td>
+    </tr>`;
+  }).join('');
+  alvo.innerHTML = `<div class="camp-scroll"><table class="camp-table">
+    <thead><tr>
+      <th>Campanha</th><th>R$/dia</th><th>Conj.</th><th>Gasto 7d</th><th>Impressões</th>
+      <th>Alcance</th><th>Freq.</th><th>CPM</th><th>Result.</th><th>Custo/result.</th>
+      <th>Mín. p/ aprender</th><th>Veredito</th>
+    </tr></thead>
+    <tbody>${linhas}</tbody>
+  </table></div>`;
+}
+async function salvarMetas(){
+  const patch = { atualizado_em: new Date().toISOString() };
+  for(const f of METAS_CAMPOS){
+    const v = Number(document.getElementById('meta-' + f.chave).value);
+    if(!isFinite(v) || v <= 0){ toast('Metas precisam ser números maiores que zero.'); return; }
+    patch[f.chave] = v;
+  }
+  const { error } = await db.from('metas_campanha').update(patch).eq('id', true);
+  if(error){ toast('Não deu pra salvar: ' + error.message); return; }
+  const [metasRes, campanhasRes] = await Promise.all([
+    db.from('metas_campanha').select('*').limit(1),
+    db.from('v_diagnostico_campanha').select('*').order('orcamento_diario', { ascending: false, nullsFirst: false }),
+  ]);
+  store.metasCampanha = (metasRes.data || [])[0] || null;
+  store.campanhas = campanhasRes.data || [];
+  renderCampanhas();
+  toast('Metas salvas — vereditos recalculados.');
+}
+
 async function salvarCriterios(){
   const updates = store.criterios.map(c => ({
     chave: c.chave,
@@ -677,7 +819,7 @@ function iniciarRealtime(){
 // ROTEADOR
 // ════════════════════════════════════════════════════════════════
 let viewAtual = 'ranking';
-const VIEW_TITLES = { ranking: 'Ranking', perfis: 'Perfis', direct: 'Direct', criterios: 'Critérios' };
+const VIEW_TITLES = { ranking: 'Ranking', perfis: 'Perfis', campanhas: 'Campanhas', direct: 'Direct', criterios: 'Critérios' };
 function toggleSidebar(force){
   const open = force !== undefined ? force : !document.getElementById('sidebar').classList.contains('open');
   document.getElementById('sidebar').classList.toggle('open', open);
@@ -696,6 +838,7 @@ function switchView(v){
 function renderViewAtual(){
   if(viewAtual === 'ranking') renderRanking();
   else if(viewAtual === 'perfis') renderPerfis();
+  else if(viewAtual === 'campanhas') renderCampanhas();
   else if(viewAtual === 'direct') renderDirect();
   else if(viewAtual === 'criterios') renderCriterios();
 }

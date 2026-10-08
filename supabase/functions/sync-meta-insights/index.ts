@@ -18,6 +18,14 @@
 //      com a mídia orgânica correspondente, marca `origem =
 //      'impulsionado'` e grava o gasto/impressões pagas em
 //      `metricas_publicacao_paga` — SEM misturar com o número orgânico.
+//   4b. Ainda na Marketing API, espelha as CAMPANHAS da conta de
+//      anúncio (`campanhas`) com orçamento diário, nº de conjuntos
+//      ativos e função no funil, e grava os insights em duas
+//      granularidades: série diária (`metricas_campanha_diaria`) e
+//      janela agregada de 7/30 dias (`metricas_campanha_janela`, que é
+//      a fonte correta de alcance e frequência). O veredito por
+//      campanha — escalar, corrigir, cortar conjuntos, ampliar público
+//      — sai da view `v_diagnostico_campanha`.
 //   5. Calcula o ranking da execução (pesos de `criterios_ranking`,
 //      normalizados 0–100 entre as contas) e grava em
 //      `ranking_execucoes` / `ranking_perfis` / `ranking_publicacoes`.
@@ -254,6 +262,225 @@ async function sincronizarConta(conta: Conta, accessToken: string, executionStar
       await sincronizarPago(conta, accessToken, publicacoesSalvas)
     } catch (e) {
       console.error(`insights pagos (${conta.nome}):`, (e as Error).message)
+    }
+    // camada de campanha — decisão de mídia (pra onde vai o orçamento),
+    // independente de qual post foi impulsionado.
+    try {
+      await sincronizarCampanhas(conta, accessToken)
+    } catch (e) {
+      console.error(`insights de campanha (${conta.nome}):`, (e as Error).message)
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// Camada de CAMPANHA (Marketing API)
+//
+// Responde decisão de mídia: pra onde vai o orçamento, qual campanha
+// escala, qual está presa na fase de aprendizado, qual saturou o
+// público. É independente da camada por publicação acima — uma campanha
+// pode rodar criativo que não existe como post orgânico.
+//
+// Duas chamadas de insights de propósito, por campanha:
+//   - time_increment=1  → série diária, pra tendência.
+//   - janela agregada   → alcance e frequência corretos. `reach`
+//     desduplica pessoas DENTRO da janela pedida, então somar 7
+//     alcances diários dá mais que o alcance real de 7 dias, e a
+//     frequência calculada sobre essa soma sai subestimada. Como é a
+//     frequência que decide se o remarketing saturou, ela tem que vir
+//     agregada.
+//
+// Escopo de token necessário: ads_read.
+// ════════════════════════════════════════════════════════════════
+
+// Ordem de prioridade pra decidir qual action_type conta como
+// "resultado" da campanha. A Meta devolve várias ações no mesmo
+// insight (link_click, post_engagement, lead...) e somar tudo infla o
+// número; então escolhemos UMA, a mais próxima da conversão, e
+// gravamos qual foi em `acao_resultado` pra o número ser auditável.
+const PRIORIDADE_ACAO = [
+  "offsite_conversion.fb_pixel_lead",
+  "onsite_conversion.lead_grouped",
+  "lead",
+  "onsite_conversion.messaging_conversation_started_7d",
+  "offsite_conversion.fb_pixel_complete_registration",
+  "onsite_conversion.post_save",
+  "link_click",
+  "landing_page_view",
+  "post_engagement",
+]
+
+function escolherResultado(acoes: { action_type: string; value: string }[] | undefined) {
+  if (!acoes?.length) return { resultados: 0, acao: null as string | null }
+  for (const tipo of PRIORIDADE_ACAO) {
+    const hit = acoes.find((a) => a.action_type === tipo)
+    if (hit) return { resultados: Number(hit.value) || 0, acao: tipo }
+  }
+  // nenhuma ação conhecida: pega a de maior volume e deixa registrado
+  const maior = acoes.reduce((a, b) => (Number(b.value) > Number(a.value) ? b : a))
+  return { resultados: Number(maior.value) || 0, acao: maior.action_type }
+}
+
+// Objetivos que otimizam por impressão/alcance e NÃO perseguem
+// conversão nem seguidor — é o que torna "custo por seguidor" nessas
+// campanhas uma divisão aritmética em vez de uma meta do leilão.
+const OBJETIVOS_ALCANCE = ["OUTCOME_AWARENESS", "REACH", "BRAND_AWARENESS", "POST_ENGAGEMENT"]
+
+function inferirFuncao(objetivo: string | null, nome: string): string {
+  if (objetivo && OBJETIVOS_ALCANCE.includes(objetivo)) return "alcance"
+  const n = (nome || "").toUpperCase()
+  if (/REMARK|RMKT|RTG|RETARGET|QUENTE|AQUEC/.test(n)) return "remarketing"
+  if (/PROSPEC|ICP|LEAD|FRIO|TOPO/.test(n)) return "prospeccao"
+  if (objetivo && /LEADS|SALES|CONVERSION/.test(objetivo)) return "prospeccao"
+  return "outro"
+}
+
+// Orçamentos da Meta vêm em centavos, como string.
+function centavos(v: unknown): number | null {
+  const n = Number(v)
+  return isFinite(n) && n > 0 ? n / 100 : null
+}
+
+const CAMPOS_INSIGHT =
+  "campaign_id,spend,impressions,reach,frequency,clicks,cpm,cpc,inline_link_click_ctr,actions"
+
+async function sincronizarCampanhas(conta: Conta, accessToken: string) {
+  const adAccount = conta.ad_account_id!
+
+  // ── 1. campanhas ──
+  const camps = await graphGet(`${adAccount}/campaigns`, {
+    fields: "id,name,objective,status,effective_status,daily_budget,lifetime_budget",
+    effective_status: JSON.stringify(["ACTIVE", "PAUSED"]),
+    limit: "200",
+    access_token: accessToken,
+  })
+  const campanhasApi = (camps?.data || []) as Array<{
+    id: string; name: string; objective?: string; status?: string
+    effective_status?: string; daily_budget?: string; lifetime_budget?: string
+  }>
+  if (!campanhasApi.length) return
+
+  // ── 2. conjuntos: contagem de ativos e orçamento em ABO ──
+  // Em CBO o orçamento fica na campanha; em ABO a campanha vem sem
+  // orçamento e o valor real é a soma dos conjuntos ativos. Sem isso a
+  // conta de fase de aprendizado compara contra zero.
+  const adsets = await graphGet(`${adAccount}/adsets`, {
+    fields: "id,campaign_id,effective_status,daily_budget,optimization_goal",
+    effective_status: JSON.stringify(["ACTIVE", "PAUSED"]),
+    limit: "500",
+    access_token: accessToken,
+  })
+  const porCampanha = new Map<string, { ativos: number; orcamento: number; metas: Set<string> }>()
+  for (const a of (adsets?.data || []) as Array<{
+    campaign_id: string; effective_status?: string; daily_budget?: string; optimization_goal?: string
+  }>) {
+    if (a.effective_status !== "ACTIVE") continue
+    const atual = porCampanha.get(a.campaign_id) ?? { ativos: 0, orcamento: 0, metas: new Set<string>() }
+    atual.ativos += 1
+    atual.orcamento += centavos(a.daily_budget) ?? 0
+    if (a.optimization_goal) atual.metas.add(a.optimization_goal)
+    porCampanha.set(a.campaign_id, atual)
+  }
+
+  // ── 3. upsert das campanhas ──
+  const idPorCampaignId = new Map<string, string>()
+  for (const c of campanhasApi) {
+    const agg = porCampanha.get(c.id)
+    const orcCampanha = centavos(c.daily_budget)
+    const orcConjuntos = agg && agg.orcamento > 0 ? agg.orcamento : null
+    const { data: salva } = await db.from("campanhas")
+      .upsert({
+        conta_id: conta.id,
+        campaign_id: c.id,
+        nome: c.name,
+        objetivo: c.objective ?? null,
+        status: c.status ?? null,
+        effective_status: c.effective_status ?? null,
+        orcamento_diario: orcCampanha ?? orcConjuntos,
+        orcamento_origem: orcCampanha ? "campanha" : (orcConjuntos ? "conjuntos" : null),
+        orcamento_vitalicio: centavos(c.lifetime_budget),
+        conjuntos_ativos: agg?.ativos ?? 0,
+        objetivos_otimizacao: agg?.metas.size ? [...agg.metas].join(",") : null,
+        funcao: inferirFuncao(c.objective ?? null, c.name),
+        sincronizado_em: new Date().toISOString(),
+        atualizado_em: new Date().toISOString(),
+      }, { onConflict: "campaign_id" })
+      .select("id")
+      .single()
+    if (salva?.id) idPorCampaignId.set(c.id, salva.id)
+  }
+
+  // ── 4. série diária (últimos 7 dias) ──
+  const diarios = await graphGet(`${adAccount}/insights`, {
+    level: "campaign",
+    fields: CAMPOS_INSIGHT,
+    date_preset: "last_7d",
+    time_increment: "1",
+    limit: "500",
+    access_token: accessToken,
+  })
+  for (const row of (diarios?.data || []) as Array<Record<string, string> & {
+    actions?: { action_type: string; value: string }[]; date_start: string
+  }>) {
+    const campanhaId = idPorCampaignId.get(row.campaign_id)
+    if (!campanhaId) continue
+    const gasto = Number(row.spend) || 0
+    const { resultados, acao } = escolherResultado(row.actions)
+    await db.from("metricas_campanha_diaria").upsert({
+      campanha_id: campanhaId,
+      data_referencia: row.date_start,
+      gasto,
+      impressoes: Number(row.impressions) || 0,
+      alcance: Number(row.reach) || 0,
+      cliques_link: Number(row.clicks) || 0,
+      cpm: row.cpm ? Number(row.cpm) : null,
+      cpc: row.cpc ? Number(row.cpc) : null,
+      ctr_link: row.inline_link_click_ctr ? Number(row.inline_link_click_ctr) : null,
+      resultados,
+      custo_por_resultado: resultados > 0 ? gasto / resultados : null,
+      acao_resultado: acao,
+      capturado_em: new Date().toISOString(),
+    }, { onConflict: "campanha_id,data_referencia" })
+  }
+
+  // ── 5. janelas agregadas (7d e 30d) — alcance/frequência corretos ──
+  for (const [janela, preset] of [[7, "last_7d"], [30, "last_30d"]] as [number, string][]) {
+    const agregado = await graphGet(`${adAccount}/insights`, {
+      level: "campaign",
+      fields: CAMPOS_INSIGHT,
+      date_preset: preset,
+      limit: "500",
+      access_token: accessToken,
+    })
+    for (const row of (agregado?.data || []) as Array<Record<string, string> & {
+      actions?: { action_type: string; value: string }[]; date_start: string; date_stop: string
+    }>) {
+      const campanhaId = idPorCampaignId.get(row.campaign_id)
+      if (!campanhaId) continue
+      const gasto = Number(row.spend) || 0
+      const { resultados, acao } = escolherResultado(row.actions)
+      const impressoes = Number(row.impressions) || 0
+      const alcance = Number(row.reach) || 0
+      await db.from("metricas_campanha_janela").upsert({
+        campanha_id: campanhaId,
+        janela_dias: janela,
+        inicio: row.date_start,
+        fim: row.date_stop,
+        gasto,
+        impressoes,
+        alcance,
+        // a API já devolve `frequency` desduplicado na janela; o
+        // fallback só existe pra quando o campo vier vazio.
+        frequencia: row.frequency ? Number(row.frequency) : (alcance > 0 ? impressoes / alcance : null),
+        cliques_link: Number(row.clicks) || 0,
+        cpm: row.cpm ? Number(row.cpm) : null,
+        cpc: row.cpc ? Number(row.cpc) : null,
+        ctr_link: row.inline_link_click_ctr ? Number(row.inline_link_click_ctr) : null,
+        resultados,
+        custo_por_resultado: resultados > 0 ? gasto / resultados : null,
+        acao_resultado: acao,
+        capturado_em: new Date().toISOString(),
+      }, { onConflict: "campanha_id,janela_dias" })
     }
   }
 }

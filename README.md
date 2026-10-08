@@ -165,7 +165,71 @@ Manager, sem precisar passar pelo App Review completo da Meta:
    60 dias — marque uma recorrência pra renovar (`token_expira_em` ajuda a
    lembrar).
 
-### 4. Testar
+### 4. Aba Campanhas (decisão de mídia)
+
+As abas Ranking/Perfis respondem *qual post performou*. A aba
+**Campanhas** responde a outra pergunta, que é de mídia e não de
+conteúdo: **pra onde vai o orçamento e qual campanha escala.**
+
+Ela só popula pra contas com `ad_account_id` preenchido e token com
+escopo `ads_read`. A cada sincronização, a Edge Function espelha as
+campanhas da conta de anúncio (`campanhas`) com orçamento diário, nº de
+conjuntos ativos e função no funil, e grava insights em duas
+granularidades:
+
+| Tabela | Granularidade | Pra que serve |
+| --- | --- | --- |
+| `metricas_campanha_diaria` | 1 linha por campanha por dia | tendência |
+| `metricas_campanha_janela` | 1 linha por campanha por janela (7d, 30d) | **alcance e frequência corretos** |
+
+As duas existem por um motivo concreto: `reach` desduplica pessoas
+*dentro da janela pedida*. Somar o alcance de 7 dias diários dá um
+número maior que o alcance real de 7 dias, e a frequência calculada
+sobre essa soma sai **subestimada** — justo a métrica que decide se o
+remarketing saturou. Então frequência vem sempre da janela agregada.
+
+O veredito de cada campanha sai da view `v_diagnostico_campanha`
+(migration `0015`), não do front-end, pra que painel e SQL nunca
+divirjam. Ordem de avaliação, a primeira que bate decide:
+
+| Veredito | Dispara quando | Ação |
+| --- | --- | --- |
+| `trocar_objetivo` | objetivo é de alcance/awareness | o leilão não persegue conversão nem seguidor; custo por seguidor ali é divisão aritmética. Duplicar pra Engajamento → visitas ao perfil |
+| `cortar_conjuntos` | mais de 1 conjunto **e** teto sustentável < conjuntos ativos | desligar os de pior custo até caber |
+| `ampliar_publico` | frequência 7d > `limite_frequencia` | ampliar janela/listas ou baixar verba |
+| `sem_resultado` | gastou e não registrou resultado | evento de conversão provavelmente quebrado |
+| `pausar_refazer` | custo > 150% da meta | criativo e público novos |
+| `corrigir` | custo > meta | trocar criativo antes de mexer em verba |
+| `subir_orcamento` | verba < mínimo de aprendizado pra **um** conjunto | trava é de volume, não de eficiência |
+| `escalar` | custo ≤ 80% da meta, sem travas | +20–25% a cada 3–4 dias |
+| `manter` | resto | nada esta semana |
+
+O limiar de aprendizado é regra da plataforma: cada conjunto precisa de
+~50 eventos de otimização por semana. Daí sai o teto de conjuntos que um
+orçamento sustenta num dado custo:
+
+```
+conjuntos sustentáveis = (orçamento/dia × 7) ÷ (50 × custo por resultado)
+```
+
+`cortar_conjuntos` exige mais de um conjunto ativo de propósito: com um
+conjunto só não existe o que cortar, e aí o problema é o custo
+(`pausar_refazer`/`corrigir`) ou a verba (`subir_orcamento`).
+
+As metas são do negócio, não benchmark de mercado — ficam em
+`metas_campanha` (linha única) e são editáveis na própria aba:
+`meta_cpl`, `meta_custo_seguidor`, `limite_frequencia`,
+`eventos_aprendizado`.
+
+Em CBO o orçamento diário vem da campanha; em ABO a campanha vem sem
+orçamento e o valor real é a soma dos conjuntos ativos — a sincronização
+cobre os dois casos e registra a origem em `orcamento_origem`.
+
+A função no funil (`prospeccao` / `remarketing` / `alcance` / `outro`) é
+inferida do objetivo + nome. Quando a nomenclatura mentir, preencha
+`campanhas.funcao_manual` — ela ganha sempre.
+
+### 5. Testar
 
 No painel (`insights.html` → aba Ranking), clique **"Atualizar agora"** —
 dispara a Edge Function na hora, sem esperar o cron. Se alguma conta ainda

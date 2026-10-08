@@ -241,6 +241,63 @@ Personal Access Token + senha do banco, e mesmo tendo isso, a rede do
 sandbox bloqueia o host. O caminho certo é sempre via CI (GitHub Actions),
 não um agente tentando alcançar o Supabase direto.
 
+## Camada de campanha (Marketing API) — migration `0015`
+
+As frentes acima medem **conteúdo**: qual post performou, qual perfil
+está na frente, qual Reel prendeu mais. Faltava a pergunta de **mídia**,
+que é a que move dinheiro: pra onde vão os R$/dia e qual campanha
+escala.
+
+A camada de campanha responde isso sem depender de print do Ads Manager.
+Por campanha ativa, duas vezes por dia:
+
+- orçamento diário (CBO na campanha, ABO somando os conjuntos ativos),
+  nº de conjuntos ativos, objetivo e função no funil;
+- insights em série diária (`metricas_campanha_diaria`) pra tendência;
+- insights em janela agregada de 7 e 30 dias
+  (`metricas_campanha_janela`) pra alcance e frequência.
+
+### Por que duas granularidades
+
+`reach` desduplica pessoas dentro da janela pedida. O alcance de 7 dias
+não é a soma dos 7 alcances diários — é menor, porque a mesma pessoa
+aparece em vários dias. Se a frequência for calculada sobre a soma dos
+dias, ela sai **subestimada**: o denominador fica inflado. E a
+frequência é exatamente o número que decide se um público de remarketing
+saturou. Por isso ela vem da chamada agregada, sempre, e a série diária
+fica só pra tendência.
+
+### Veredito único, em SQL
+
+`v_diagnostico_campanha` decide escalar / manter / corrigir / cortar
+conjuntos / ampliar público / subir orçamento / pausar, contra as metas
+em `metas_campanha` (do negócio, não benchmark de mercado). A lógica mora
+no banco e não no front pra que painel, SQL e qualquer consumidor futuro
+nunca cheguem a respostas diferentes. A ordem de avaliação e a tabela de
+vereditos estão no README, seção "Aba Campanhas".
+
+Duas decisões de modelagem que valem registro:
+
+1. **`cortar_conjuntos` exige mais de um conjunto ativo.** A primeira
+   versão da view só comparava orçamento contra o mínimo de aprendizado,
+   e com um conjunto só ela mandava "cortar conjuntos" com teto zero —
+   conselho impossível de executar. Com um conjunto o problema é o custo
+   ou a verba, não a fragmentação.
+2. **Qual ação conta como resultado.** A Meta devolve várias ações no
+   mesmo insight (`link_click`, `post_engagement`, `lead`...) e somar
+   tudo infla o número. A sincronização escolhe **uma**, pela lista de
+   prioridade em `PRIORIDADE_ACAO` (da mais próxima da conversão pra
+   mais rasa), e grava qual foi em `acao_resultado` — o número fica
+   auditável em vez de mágico.
+
+### Limitação herdada
+
+Nada disso resolve atribuição de seguidor por campanha: a Meta só expõe
+`follows` nativo por mídia em Reels. Campanha com objetivo de alcance
+recebe sempre `trocar_objetivo`, porque medir custo por seguidor num
+objetivo que não otimiza por seguidor é ler um número que o leilão não
+está perseguindo.
+
 ## Próximos passos (backlog, fora do v1)
 - Papéis diferenciados por função (Social Selling vs. Social Media).
 - Fluxo de OAuth "Conectar Instagram" com botão (v1 usa token de sistema
